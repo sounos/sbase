@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# XHTTPD:
+#
+# chkconfig:	2345 90 70
+# description:  XHTTPD
+#
+#
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+#[ -r /etc/sysconfig/xhttpd ] && . /etc/sysconfig/xhttpd
+XHTTPDARGS=" -d -c /usr/local/etc/xhttpd.ini > /dev/null 2>&1 "
+
+start() 
+{
+    echo -n $"Starting xhttpd: "
+    daemon /usr/local/sbin/xhttpd $XHTTPDARGS
+
+    echo
+}
+
+stop() 
+{
+        echo -n $"Shutting down xhttpd: "
+	killproc xhttpd
+
+        echo
+}
+
+[ -f /usr/local/sbin/xhttpd ] || exit 0
+
+# See how we were called.
+case "$1" in
+  start)
+	start
+        ;;
+  stop)
+	stop
+        ;;
+  restart|reload)
+	stop
+	start
+	;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|reload}"
+        exit 1
+esac
+
+exit 0
