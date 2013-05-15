@@ -34,12 +34,56 @@ do                                                                              
 #else 
 #define SERVICE_CHECK_SSL_CLIENT(service)
 #endif
+int new_listenfd(SERVICE *service)
+{
+    int fd = 0, opt = 1, flag = 0, ret = 0;
+    struct linger linger = {0};
+
+    if((fd = socket(service->family, service->sock_type, 0)) > 0
+            && fcntl(fd, F_SETFD, FD_CLOEXEC) == 0
+
+            && setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0
+#ifdef SO_REUSEPORT
+            && setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) == 0
+#endif
+      )
+    {
+        if(service->flag & SB_SO_LINGER)
+        {
+            linger.l_onoff = 1;linger.l_linger = 0;
+            setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger));
+        }
+        /*
+           if(service->flag & SB_TCP_NODELAY)
+           {
+        //opt = 1;setsockopt(service->fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
+        opt = 1;setsockopt(service->fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+        }
+        */
+        //opt = 1;setsockopt(service->fd, IPPROTO_TCP, TCP_CORK, &opt, sizeof(opt));
+        //opt = 1;setsockopt(service->fd, IPPROTO_TCP, TCP_QUICKACK, &opt, sizeof(opt));
+        if(service->working_mode == WORKING_PROC)
+        {
+            flag = fcntl(fd, F_GETFL, 0);
+            ret = fcntl(fd, F_SETFL, flag|O_NONBLOCK);
+        }
+        ret = bind(fd, (struct sockaddr *)&(service->sa), sizeof(struct sockaddr));
+        if(service->sock_type == SOCK_STREAM) 
+            ret |= listen(fd, SB_BACKLOG_MAX);
+        if(ret)
+        {
+            WARN_LOGGER(service->logger, "bind fd[%d] failed, %s", fd, strerror(errno));
+            close(fd);
+            fd = 0;
+        }
+    }
+    return fd;
+}
 
 /* set service */
 int service_set(SERVICE *service)
 {
-    int ret = -1, opt = 1, flag = 0;
-    struct linger linger = {0};
+    int ret = -1, i = 0;
     char *p = NULL;
 
     if(service)
@@ -84,37 +128,15 @@ int service_set(SERVICE *service)
                 }
             }
 #endif
-            if((service->fd = socket(service->family, service->sock_type, 0)) > 0
-                && fcntl(service->fd, F_SETFD, FD_CLOEXEC) == 0
-             
-                && setsockopt(service->fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0
-#ifdef SO_REUSEPORT
-                && setsockopt(service->fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) == 0
-#endif
-                )
+            if((service->fd = new_listenfd(service)) > 0)
             {
-                if(service->flag & SB_SO_LINGER)
+                if(service->session.flags & SB_MULTICAST_LIST)
                 {
-                    linger.l_onoff = 1;linger.l_linger = 0;
-                    setsockopt(service->fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger));
+                    for(i = 0; i < SB_MULTICAST_MAX; i++)
+                    {
+                        service->multicasts[i] = new_listenfd(service);
+                    }
                 }
-                /*
-                if(service->flag & SB_TCP_NODELAY)
-                {
-                    //opt = 1;setsockopt(service->fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
-                    opt = 1;setsockopt(service->fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
-                }
-                */
-                //opt = 1;setsockopt(service->fd, IPPROTO_TCP, TCP_CORK, &opt, sizeof(opt));
-                //opt = 1;setsockopt(service->fd, IPPROTO_TCP, TCP_QUICKACK, &opt, sizeof(opt));
-                if(service->working_mode == WORKING_PROC)
-                {
-                    flag = fcntl(service->fd, F_GETFL, 0);
-                    ret = fcntl(service->fd, F_SETFL, flag|O_NONBLOCK);
-                }
-                ret = bind(service->fd, (struct sockaddr *)&(service->sa), sizeof(struct sockaddr));
-                if(service->sock_type == SOCK_STREAM) ret = listen(service->fd, SB_BACKLOG_MAX);
-                return ret;
             }
             else
             {
@@ -204,10 +226,12 @@ int service_run(SERVICE *service)
             {
                 for(i = 0; i < SB_MULTICAST_MAX; i++)
                 {
-                    service->multicasts[i] = dup(service->fd);
-                    event_set(&(service->evmulticasts[i]), service->multicasts[i],
-                            E_READ|E_PERSIST, (void *)service, (void *)&service_event_handler);
-                    ret = service->evbase->add(service->evbase, &(service->evmulticasts[i]));
+                    if(service->multicasts[i] > 0)
+                    {
+                        event_set(&(service->evmulticasts[i]), service->multicasts[i],
+                                E_READ|E_PERSIST, (void *)service, (void *)&service_event_handler);
+                        ret = service->evbase->add(service->evbase, &(service->evmulticasts[i]));
+                    }
                 }
             }
         }
@@ -1383,8 +1407,9 @@ int service_new_multicast(SERVICE *service, char *multicast_ip)
     int ret = -1, i = 0, fd = 0, op = 0;
     struct ip_mreq mreq;
 
-    if(service && service->lock == 0 && service->sock_type == SOCK_DGRAM && multicast_ip 
-            && service->ip)
+    if(service && service->lock == 0 && service->sock_type == SOCK_DGRAM 
+            && multicast_ip && service->ip 
+            && (service->session.flags & SB_MULTICAST_LIST))
     {
         MUTEX_LOCK(service->mutex);
         if((i = service->nmulticasts) < SB_MULTICAST_MAX)
@@ -1404,7 +1429,7 @@ int service_new_multicast(SERVICE *service, char *multicast_ip)
         }
         else
         {
-            WARN_LOGGER(service->logger, "adding multicast:%s to multicast_fd[%d] failed, %s",multicast_ip, service, fd, strerror(errno));
+            WARN_LOGGER(service->logger, "adding multicast:%s to multicast_fd[%d] failed, %s",multicast_ip, fd, strerror(errno));
         }
     }
     return ret;
@@ -1742,7 +1767,7 @@ void service_stop(SERVICE *service)
         {
             for(i = 0; i < SB_MULTICAST_MAX; i++)
             {
-                event_destroy(&(service->evmulticasts));
+                event_destroy(&(service->evmulticasts[i]));
             }
         }
         ACCESS_LOGGER(service->logger, "over for stop service[%s]", service->service_name);
@@ -1840,7 +1865,7 @@ void service_clean(SERVICE *service)
         {
             for(i = 0; i < SB_MULTICAST_MAX; i++)
             {
-                event_clean(&(service->evmulticasts));
+                event_clean(&(service->evmulticasts[i]));
             }
         }
         if(service->daemon) service->daemon->clean(service->daemon);
