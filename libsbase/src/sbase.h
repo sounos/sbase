@@ -151,10 +151,11 @@ typedef struct _CB_DATA
     int size;
 }CB_DATA;
 #define PCB(mmm) ((CB_DATA *)((void *)&mmm))
-#define SB_USE_SSL      0x01
-#define SB_USE_OOB      0x02
-#define SB_MULTICAST    0x04
-#define SB_NONBLOCK     0x08
+#define SB_USE_SSL          0x01
+#define SB_USE_OOB          0x02
+#define SB_MULTICAST        0x04
+#define SB_NONBLOCK         0x08
+#define SB_MULTICAST_LIST   0x10
 typedef struct _SESSION
 {
     /* SSL/timeout */

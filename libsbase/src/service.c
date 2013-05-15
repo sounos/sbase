@@ -173,7 +173,7 @@ do{                                                                             
 /* running */
 int service_run(SERVICE *service)
 {
-    int ret = -1, i = 0, x = 0, op = 0;
+    int ret = -1, i = 0, x = 0;
     //ncpu = sysconf(_SC_NPROCESSORS_CONF);
     CONN *conn = NULL; 
 #ifdef HAVE_PTHREAD
@@ -200,9 +200,8 @@ int service_run(SERVICE *service)
             event_set(&(service->event), service->fd, E_READ|E_PERSIST,
                     (void *)service, (void *)&service_event_handler);
             ret = service->evbase->add(service->evbase, &(service->event));
-            if(service->session.flags & SB_MULTICAST)
+            if(service->session.flags & SB_MULTICAST_LIST)
             {
-                setsockopt(service->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &op, sizeof(op));
                 for(i = 0; i < SB_MULTICAST_MAX; i++)
                 {
                     service->multicasts[i] = dup(service->fd);
@@ -1381,7 +1380,7 @@ int service_set_session(SERVICE *service, SESSION *session)
 /* add multicast */
 int service_new_multicast(SERVICE *service, char *multicast_ip)
 {
-    int ret = -1, i = 0, fd = 0;
+    int ret = -1, i = 0, fd = 0, op = 0;
     struct ip_mreq mreq;
 
     if(service && service->lock == 0 && service->sock_type == SOCK_DGRAM && multicast_ip 
@@ -1397,6 +1396,7 @@ int service_new_multicast(SERVICE *service, char *multicast_ip)
         memset(&mreq, 0, sizeof(struct ip_mreq));
         mreq.imr_multiaddr.s_addr = inet_addr(multicast_ip);
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+        setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &op, sizeof(op));
         if(fd > 0 && (ret = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, 
                         (char*)&mreq, sizeof(struct ip_mreq))) == 0)
         {
@@ -1641,7 +1641,7 @@ void service_stop(SERVICE *service)
         {
             if(service->fd > 0){shutdown(service->fd, SHUT_RDWR);close(service->fd); service->fd = -1;}
         }
-        if(service->session.flags & SB_MULTICAST)
+        if(service->session.flags & SB_MULTICAST_LIST)
         {
             for(i = 0; i < SB_MULTICAST_MAX; i++)
             {
@@ -1738,7 +1738,7 @@ void service_stop(SERVICE *service)
         }
         /*remove event */
         event_destroy(&(service->event));
-        if(service->session.flags & SB_MULTICAST)
+        if(service->session.flags & SB_MULTICAST_LIST)
         {
             for(i = 0; i < SB_MULTICAST_MAX; i++)
             {
@@ -1836,9 +1836,12 @@ void service_clean(SERVICE *service)
     if(service)
     {
         event_clean(&(service->event)); 
-        for(i = 0; i < SB_MULTICAST_MAX; i++)
+        if(service->session.flags & SB_MULTICAST_LIST)
         {
-            event_clean(&(service->evmulticasts));
+            for(i = 0; i < SB_MULTICAST_MAX; i++)
+            {
+                event_clean(&(service->evmulticasts));
+            }
         }
         if(service->daemon) service->daemon->clean(service->daemon);
         if(service->acceptor) service->acceptor->clean(service->acceptor);
