@@ -26,7 +26,7 @@ void procthread_event_handler(int event_fd, int flags, void *arg)
     {
         if(event_fd == service->fd)
         {
-            service_accept_handler(service);
+            service_accept_handler(service, event_fd);
         }
         else
         {
@@ -151,7 +151,7 @@ void procthread_run(void *arg)
         {
             do
             {
-                service_accept_handler(pth->service);
+                service_accept_handler(pth->service, pth->listenfd);
             }while(pth->running_status);
             ACCESS_LOGGER(pth->logger, "Ready for stop threads[acceptor]");
         }

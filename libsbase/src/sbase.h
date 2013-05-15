@@ -52,6 +52,7 @@ extern "C" {
 #define SB_CPU_SET              0x4000
 #define SB_NEWCONN_DELAY        0x8000
 #define SB_MULTICAST_IN         0x01
+#define SB_MULTICAST_MAX        256
 /* service type */
 #define S_SERVICE               0x00
 #define C_SERVICE               0x01
@@ -313,7 +314,10 @@ typedef struct _SERVICE
 
     /* socket and inet addr option  */
     char *ip;
-    char *multicast;
+    int  is_multicastd;
+    int  nmulticasts;
+    EVENT evmulticasts[SB_MULTICAST_MAX];
+    ushort multicasts[SB_MULTICAST_MAX];
         
     /* SSL */
     char *cacert_file;
@@ -360,6 +364,7 @@ typedef struct _SERVICE
     void    (*overconn)(struct _SERVICE *service, struct _CONN *conn);
 
     /* CAST */
+    int (*new_multicast)(struct _SERVICE *service, char *multicast_ip);
     int (*add_multicast)(struct _SERVICE *service, char *multicast_ip);
     int (*drop_multicast)(struct _SERVICE *service, char *multicast_ip);
     int (*broadcast)(struct _SERVICE *service, char *data, int len);

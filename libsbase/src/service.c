@@ -173,7 +173,7 @@ do{                                                                             
 /* running */
 int service_run(SERVICE *service)
 {
-    int ret = -1, i = 0, x = 0;
+    int ret = -1, i = 0, x = 0, op = 0;
     //ncpu = sysconf(_SC_NPROCESSORS_CONF);
     CONN *conn = NULL; 
 #ifdef HAVE_PTHREAD
@@ -200,6 +200,17 @@ int service_run(SERVICE *service)
             event_set(&(service->event), service->fd, E_READ|E_PERSIST,
                     (void *)service, (void *)&service_event_handler);
             ret = service->evbase->add(service->evbase, &(service->event));
+            if(service->session.flags & SB_MULTICAST)
+            {
+                setsockopt(service->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &op, sizeof(op));
+                for(i = 0; i < SB_MULTICAST_MAX; i++)
+                {
+                    service->multicasts[i] = dup(service->fd);
+                    event_set(&(service->evmulticasts[i]), service->multicasts[i],
+                            E_READ|E_PERSIST, (void *)service, (void *)&service_event_handler);
+                    ret = service->evbase->add(service->evbase, &(service->evmulticasts[i]));
+                }
+            }
         }
         //initliaze conns
         for(i = 0; i < SB_INIT_CONNS; i++)
@@ -461,7 +472,7 @@ int service_set_log_level(SERVICE *service, int level)
 }
 
 /* accept handler */
-int service_accept_handler(SERVICE *service)
+int service_accept_handler(SERVICE *service, int evfd)
 {
     char buf[SB_BUF_SIZE], *p = NULL, *ip = NULL;
     socklen_t rsa_len = sizeof(struct sockaddr_in);
@@ -474,10 +485,11 @@ int service_accept_handler(SERVICE *service)
 
     if(service)
     {
+        if(evfd <= 0) evfd = service->fd;
         if(service->sock_type == SOCK_STREAM)
         {
             daemon = service->daemon;
-            while((fd = accept(service->fd, (struct sockaddr *)&rsa, &rsa_len)) > 0)
+            while((fd = accept(evfd, (struct sockaddr *)&rsa, &rsa_len)) > 0)
             {
                 ip = inet_ntoa(rsa.sin_addr);
                 port = ntohs(rsa.sin_port);
@@ -539,7 +551,7 @@ err_conn:
         }
         else if(service->sock_type == SOCK_DGRAM)
         {
-            while((n = recvfrom(service->fd, buf, SB_BUF_SIZE, 
+            while((n = recvfrom(evfd, buf, SB_BUF_SIZE, 
                             0, (struct sockaddr *)&rsa, &rsa_len)) > 0)
             {
                 ip = inet_ntoa(rsa.sin_addr);
@@ -614,9 +626,9 @@ void service_event_handler(int event_fd, int flag, void *arg)
     SERVICE *service = (SERVICE *)arg;
     if(service)
     {
-        if(event_fd == service->fd && (flag & E_READ))
+        if(event_fd > 0 && (flag & E_READ))
         {
-            service_accept_handler(service);
+            service_accept_handler(service, event_fd);
         }
     }
     return ;
@@ -1367,6 +1379,38 @@ int service_set_session(SERVICE *service, SESSION *session)
 }
 
 /* add multicast */
+int service_new_multicast(SERVICE *service, char *multicast_ip)
+{
+    int ret = -1, i = 0, fd = 0;
+    struct ip_mreq mreq;
+
+    if(service && service->lock == 0 && service->sock_type == SOCK_DGRAM && multicast_ip 
+            && service->ip)
+    {
+        MUTEX_LOCK(service->mutex);
+        if((i = service->nmulticasts) < SB_MULTICAST_MAX)
+        {
+            fd = service->multicasts[i];
+            service->nmulticasts++;
+        }
+        MUTEX_UNLOCK(service->mutex);
+        memset(&mreq, 0, sizeof(struct ip_mreq));
+        mreq.imr_multiaddr.s_addr = inet_addr(multicast_ip);
+        mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+        if(fd > 0 && (ret = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, 
+                        (char*)&mreq, sizeof(struct ip_mreq))) == 0)
+        {
+            DEBUG_LOGGER(service->logger, "added new multicast:%s to service[%p]->fd[%d]",multicast_ip, service, service->fd);
+        }
+        else
+        {
+            WARN_LOGGER(service->logger, "adding multicast:%s to multicast_fd[%d] failed, %s",multicast_ip, service, fd, strerror(errno));
+        }
+    }
+    return ret;
+}
+
+/* set multicast */
 int service_add_multicast(SERVICE *service, char *multicast_ip)
 {
     struct ip_mreq mreq;
@@ -1597,6 +1641,15 @@ void service_stop(SERVICE *service)
         {
             if(service->fd > 0){shutdown(service->fd, SHUT_RDWR);close(service->fd); service->fd = -1;}
         }
+        if(service->session.flags & SB_MULTICAST)
+        {
+            for(i = 0; i < SB_MULTICAST_MAX; i++)
+            {
+                shutdown(service->multicasts[i], SHUT_RDWR);
+                close(service->multicasts[i]);
+                service->multicasts[i] = 0;
+            }
+        }
         //stop all connections 
         if(service->connections && service->index_max > 0)
         {
@@ -1685,6 +1738,13 @@ void service_stop(SERVICE *service)
         }
         /*remove event */
         event_destroy(&(service->event));
+        if(service->session.flags & SB_MULTICAST)
+        {
+            for(i = 0; i < SB_MULTICAST_MAX; i++)
+            {
+                event_destroy(&(service->evmulticasts));
+            }
+        }
         ACCESS_LOGGER(service->logger, "over for stop service[%s]", service->service_name);
     }
     return ;
@@ -1776,6 +1836,10 @@ void service_clean(SERVICE *service)
     if(service)
     {
         event_clean(&(service->event)); 
+        for(i = 0; i < SB_MULTICAST_MAX; i++)
+        {
+            event_clean(&(service->evmulticasts));
+        }
         if(service->daemon) service->daemon->clean(service->daemon);
         if(service->acceptor) service->acceptor->clean(service->acceptor);
         if(service->etimer) {EVTIMER_CLEAN(service->etimer);}
@@ -1873,6 +1937,7 @@ SERVICE *service_init()
         service->overconn           = service_overconn;
         service->set_session        = service_set_session;
         service->add_multicast      = service_add_multicast;
+        service->new_multicast      = service_new_multicast;
         service->drop_multicast     = service_drop_multicast;
         service->broadcast          = service_broadcast;
         service->addgroup           = service_addgroup;
