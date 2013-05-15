@@ -68,8 +68,7 @@ int new_listenfd(SERVICE *service)
             ret = fcntl(fd, F_SETFL, flag|O_NONBLOCK);
         }
         ret = bind(fd, (struct sockaddr *)&(service->sa), sizeof(struct sockaddr));
-        if(service->sock_type == SOCK_STREAM) 
-            ret |= listen(fd, SB_BACKLOG_MAX);
+        if(service->sock_type == SOCK_STREAM) ret |= listen(fd, SB_BACKLOG_MAX);
         if(ret)
         {
             WARN_LOGGER(service->logger, "bind fd[%d] failed, %s", fd, strerror(errno));
@@ -137,6 +136,7 @@ int service_set(SERVICE *service)
                         service->multicasts[i] = new_listenfd(service);
                     }
                 }
+                ret  = 0;
             }
             else
             {
