@@ -1377,7 +1377,7 @@ int service_add_multicast(SERVICE *service, char *multicast_ip)
     {
         memset(&mreq, 0, sizeof(struct ip_mreq));
         mreq.imr_multiaddr.s_addr = inet_addr(multicast_ip);
-        //mreq.imr_interface.s_addr = INADDR_ANY;
+        mreq.imr_interface.s_addr = htonl(INADDR_ANY);
         setsockopt(service->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &op, sizeof(op));
         if((ret = setsockopt(service->fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, 
                         (char*)&mreq, sizeof(struct ip_mreq))) == 0)
