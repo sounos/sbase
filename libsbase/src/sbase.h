@@ -21,7 +21,7 @@ extern "C" {
 #define SB_BACKLOG_MAX          40960
 #define SB_IP_MAX               16
 #define SB_XIDS_MAX             16
-#define SB_GROUPS_MAX           256
+#define SB_GROUPS_MAX           1024
 #define SB_SERVICE_MAX          256
 #define SB_THREADS_MAX          256
 #define SB_INIT_CONNS           256
