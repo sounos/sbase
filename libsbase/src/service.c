@@ -1503,12 +1503,14 @@ int service_addgroup(SERVICE *service, char *ip, int port, int limit, SESSION *s
     int id = -1;
     if(service && service->lock == 0 && service->ngroups < SB_GROUPS_MAX)
     {
+        MUTEX_LOCK(service->mutex);
         id = ++service->ngroups;
         strcpy(service->groups[id].ip, ip);
         service->groups[id].port = port;
         service->groups[id].limit = limit;
         //MUTEX_INIT(service->groups[id].mutex);
         memcpy(&(service->groups[id].session), session, sizeof(SESSION));
+        MUTEX_UNLOCK(service->mutex);
         //fprintf(stdout, "%s::%d service[%s]->group[%d]->session.data_handler:%p\n", __FILE__, __LINE__, service->service_name, id, service->groups[id].session.data_handler);
     }
     return id;
