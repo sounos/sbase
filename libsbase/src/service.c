@@ -1504,7 +1504,7 @@ int service_addgroup(SERVICE *service, char *ip, int port, int limit, SESSION *s
     if(service && service->lock == 0 && service->ngroups < SB_GROUPS_MAX)
     {
         MUTEX_LOCK(service->mutex);
-        id = ++service->ngroups;
+        id = ++(service->ngroups);
         strcpy(service->groups[id].ip, ip);
         service->groups[id].port = port;
         service->groups[id].limit = limit;
