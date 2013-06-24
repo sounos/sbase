@@ -1425,7 +1425,7 @@ int service_new_multicast(SERVICE *service, char *multicast_ip)
         if(fd > 0 && (ret = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, 
                         (char*)&mreq, sizeof(struct ip_mreq))) == 0)
         {
-            DEBUG_LOGGER(service->logger, "added new multicast:%s to service[%p]->fd[%d]",multicast_ip, service, service->fd);
+            DEBUG_LOGGER(service->logger, "added new multicast:%s to service[%p]->multicasts[%d]",multicast_ip, service, fd);
         }
         else
         {
