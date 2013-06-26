@@ -128,7 +128,7 @@ typedef struct _CHUNK
     int  bsize;
     int  type;
     int  fd;
-    int  bits;
+    int  flag;
     off_t size;
     off_t offset;
     off_t left;
@@ -504,6 +504,7 @@ typedef struct _CONN
     MMBLOCK exchange;
     CHUNK chunk;
     CHUNK chunk2;
+    CHUNK xchunk;
     QBLOCK qblocks[SB_QBLOCK_MAX];
     QBLOCK *qleft[SB_QBLOCK_MAX];
     QBLOCK *qhead;
@@ -583,6 +584,7 @@ typedef struct _CONN
     int (*push_chunk)(struct _CONN *, void *data, int size);
     int (*push_file)(struct _CONN *, char *file, long long offset, long long size);
     int (*send_chunk)(struct _CONN *, CB_DATA *chunk, int len);
+    int (*relay_chunk)(struct _CONN *, CB_DATA *chunk, int len);
     int (*over_chunk)(struct _CONN *);
     CB_DATA* (*newchunk)(struct _CONN *, int size);
     CB_DATA* (*mnewchunk)(struct _CONN *, int size);

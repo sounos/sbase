@@ -119,6 +119,9 @@ int conn_push_file(CONN *conn, char *file, long long offset, long long size);
 /* send chunk */
 int conn_send_chunk(CONN *conn, CB_DATA *chunk, int len);
 
+/* relay chunk */
+int conn_relay_chunk(CONN *conn, CB_DATA *chunk, int len);
+
 /* set session options */
 int conn_set_session(CONN *conn, SESSION *session);
 

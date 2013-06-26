@@ -29,6 +29,7 @@ extern "C" {
 #ifndef CHUNK_BLOCK_SIZE
 #define CHUNK_BLOCK_SIZE        4096
 #endif
+#define CHUNK_FLAG_REUSE        0x01
 #define CHUNK_STATUS_ON         0x01
 #define CHUNK_STATUS_OVER       0x02
 #ifndef __TYPEDEF__CHUNK
@@ -42,7 +43,7 @@ typedef struct _CHUNK
     int  bsize;
     int  type;
     int  fd;
-    int  bits;
+    int  flag;
     off_t size;
     off_t offset;
     off_t left;

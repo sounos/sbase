@@ -1891,6 +1891,28 @@ int conn_send_chunk(CONN *conn, CB_DATA *chunk, int len)
     return ret;
 }
 
+/* relay chunk */
+int conn_relay_chunk(CONN *conn, CB_DATA *chunk, int len)
+{
+    int ret = -1;
+    CHUNK *cp = NULL;
+    CONN_CHECK_RET(conn, (D_STATE_CLOSE|D_STATE_WCLOSE|D_STATE_RCLOSE), ret);
+
+    if(conn && chunk && len > 0)
+    {
+        cp = &(conn->xchunk);
+        memcpy(cp, (void *)chunk, sizeof(CHUNK));
+        cp->flag = CHUNK_FLAG_REUSE;
+        cp->left = len;
+        SENDQPUSH(conn, cp);
+        CONN_OUTEVENT_MESSAGE(conn);
+        ACCESS_LOGGER(conn->logger, "resend chunk[%p] len[%d][%d] to %s:%d queue[%p] total %d on %s:%d via %d", chunk, len, CHK(cp)->bsize, conn->remote_ip,conn->remote_port, SENDQ(conn), SENDQTOTAL(conn), conn->local_ip, conn->local_port, conn->fd);
+        ret = 0;
+    }
+    return ret;
+}
+
+
 /* over chunk and close connection */
 int conn_over_chunk(CONN *conn)
 {
@@ -2207,6 +2229,7 @@ CONN *conn_init()
         conn->recv_file             = conn_recv_file;
         conn->push_file             = conn_push_file;
         conn->send_chunk            = conn_send_chunk;
+        conn->relay_chunk           = conn_relay_chunk;
         conn->over_chunk            = conn_over_chunk;
         conn->newchunk              = conn_newchunk;
         conn->mnewchunk             = conn_mnewchunk;
