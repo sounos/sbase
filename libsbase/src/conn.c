@@ -1906,7 +1906,7 @@ int conn_relay_chunk(CONN *conn, CB_DATA *chunk, int len)
         cp->left = len;
         SENDQPUSH(conn, cp);
         CONN_OUTEVENT_MESSAGE(conn);
-        ACCESS_LOGGER(conn->logger, "resend chunk[%p] len[%d][%d] to %s:%d queue[%p] total %d on %s:%d via %d", chunk, len, CHK(cp)->bsize, conn->remote_ip,conn->remote_port, SENDQ(conn), SENDQTOTAL(conn), conn->local_ip, conn->local_port, conn->fd);
+        ACCESS_LOGGER(conn->logger, "relay chunk[%p] len[%d][%d] to %s:%d queue[%p] total %d on %s:%d via %d", chunk, len, CHK(cp)->bsize, conn->remote_ip,conn->remote_port, SENDQ(conn), SENDQTOTAL(conn), conn->local_ip, conn->local_port, conn->fd);
         ret = 0;
     }
     return ret;
