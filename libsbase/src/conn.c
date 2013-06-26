@@ -1902,8 +1902,7 @@ int conn_relay_chunk(CONN *conn, CB_DATA *chunk, int len)
     {
         cp = &(conn->xchunk);
         memcpy(cp, (void *)chunk, sizeof(CHUNK));
-        cp->flag = CHUNK_FLAG_REUSE;
-        cp->left = len;
+        chunk_rebuild(cp, len);
         SENDQPUSH(conn, cp);
         CONN_OUTEVENT_MESSAGE(conn);
         ACCESS_LOGGER(conn->logger, "relay chunk[%p] len[%d][%d] to %s:%d queue[%p] total %d on %s:%d via %d", chunk, len, CHK(cp)->bsize, conn->remote_ip,conn->remote_port, SENDQ(conn), SENDQTOTAL(conn), conn->local_ip, conn->local_port, conn->fd);

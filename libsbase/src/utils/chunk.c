@@ -428,6 +428,18 @@ int chunk_file_fill(void *chunk, char *data, int ndata)
     return ret;
 }
 
+/* chunk rebuil */
+void chunk_rebuild(void *chunk, int len)
+{
+    if(chunk)
+    {
+        CHK(chunk)->status = CHUNK_STATUS_ON;
+        if(CHK(chunk)->data) CHK(chunk)->end = CHK(chunk)->data;
+        if(len > 0) CHK(chunk)->left = CHK(chunk)->size = CHK(chunk)->ndata = len;
+    }
+    return;
+}
+
 /* chunk reset */
 void chunk_reset(void *chunk)
 {

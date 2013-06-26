@@ -99,6 +99,8 @@ int chunk_write_from_file_SSL(void *chunk, void *ssl);
 int chunk_file_fill(void *chunk, char *data, int ndata);
 /* chunk reset */
 void chunk_reset(void *chunk);
+/* chunk rebuild */
+void chunk_rebuild(void *chunk, int len);
 /* chunk destroy */
 void chunk_destroy(void *chunk);
 /* clean chunk */
