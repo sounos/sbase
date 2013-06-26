@@ -503,6 +503,7 @@ typedef struct _CONN
     MMBLOCK oob;
     MMBLOCK exchange;
     CHUNK chunk;
+    CHUNK chunk2;
     QBLOCK qblocks[SB_QBLOCK_MAX];
     QBLOCK *qleft[SB_QBLOCK_MAX];
     QBLOCK *qhead;
@@ -586,6 +587,8 @@ typedef struct _CONN
     CB_DATA* (*newchunk)(struct _CONN *, int size);
     CB_DATA* (*mnewchunk)(struct _CONN *, int size);
     void (*freechunk)(struct _CONN *, CB_DATA *chunk);
+    void (*setto_chunk2)(struct _CONN *);
+    void (*reset_chunk2)(struct _CONN *);
     void(*buffer_handler)(struct _CONN *);
     void(*chunkio_handler)(struct _CONN *);
     void(*free_handler)(struct _CONN *);

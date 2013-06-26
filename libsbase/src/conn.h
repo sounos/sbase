@@ -104,6 +104,12 @@ CB_DATA* conn_mnewchunk(CONN *conn, int size);
 /* freechunk */
 void conn_freechunk(CONN *conn, CB_DATA *chunk);
 
+/* set chunk to chunk2 */
+void conn_setto_chunk2(CONN *conn);
+
+/* reset chunk2 */
+void conn_reset_chunk2(CONN *conn);
+
 /* receive chunk file */
 int conn_recv_file(CONN *conn, char *file, long long offset, long long size);
 

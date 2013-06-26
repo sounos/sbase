@@ -1643,6 +1643,28 @@ CHUNK *conn_popchunk(CONN *conn)
     return cp;
 }
 
+/* set chunk to chunk2 */
+void conn_setto_chunk2(CONN *conn)
+{
+    if(conn)
+    {
+        if(conn->chunk2.data) chunk_destroy(&(conn->chunk2));
+        memcpy(&(conn->chunk2), &(conn->chunk), sizeof(CHUNK));
+        memset(&(conn->chunk), 0, sizeof(CHUNK));
+    }
+    return ;
+}
+
+/* reset chunk2 */
+void conn_reset_chunk2(CONN *conn)
+{
+    if(conn)
+    {
+        chunk_reset(&(conn->chunk2));
+    }
+    return ;
+}
+
 void conn_freechunk(CONN *conn, CB_DATA *chunk)
 {
     CHUNK *cp = NULL;
@@ -2049,7 +2071,8 @@ void conn_reset(CONN *conn)
         MMB_RESET(conn->oob);
         MMB_RESET(conn->cache);
         MMB_RESET(conn->exchange);
-        chunk_reset(&conn->chunk);
+        chunk_reset(&(conn->chunk));
+        chunk_reset(&(conn->chunk2));
         /* timer, logger, message_queue and queue */
         conn->message_queue = NULL;
         conn->inqmessage = NULL;
@@ -2110,6 +2133,8 @@ void conn_clean(CONN *conn)
         MMB_DESTROY(conn->exchange);
         /* Clean chunk */
         chunk_destroy(&(conn->chunk));
+        /* clean chunk2*/
+        chunk_destroy(&(conn->chunk2));
         /* Clean queue */
         SENDQCLEAN(conn);
         for(i = 0; i < conn->qblock_max; i++)
@@ -2186,6 +2211,8 @@ CONN *conn_init()
         conn->newchunk              = conn_newchunk;
         conn->mnewchunk             = conn_mnewchunk;
         conn->freechunk             = conn_freechunk;
+        conn->setto_chunk2          = conn_setto_chunk2;
+        conn->reset_chunk2          = conn_reset_chunk2;
         conn->buffer_handler        = conn_buffer_handler;
         conn->chunkio_handler       = conn_chunkio_handler;
         conn->free_handler          = conn_free_handler;
