@@ -1099,7 +1099,8 @@ CONN *service_getconn(SERVICE *service, int groupid)
         if(groupid > 0 && groupid <= service->ngroups)
         {
             x = 0;
-            while(x < SB_GROUP_CONN_MAX && service->groups[groupid].nconns_free > 0)
+            while(x < SB_GROUP_CONN_MAX && service->groups[groupid].nconns_free > 0
+                    && service->groups[groupid].nconnected > 0)
             {
                 if((i = service->groups[groupid].conns_free[x]) > 0 
                         && (conn = service->connections[i]))
