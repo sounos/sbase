@@ -1648,7 +1648,9 @@ void conn_freechunk(CONN *conn, CB_DATA *chunk)
     CHUNK *cp = NULL;
     int x = 0;
 
-    if(conn && (cp = (CHUNK *)chunk))
+    if(conn && (cp = (CHUNK *)chunk)
+            && (void *)cp >= (void *)conn->qblocks
+            && (void *)cp < (void *)(conn->qblocks + SB_QBLOCK_MAX))
     {
         chunk_reset(cp);
         MUTEX_LOCK(conn->mutex);
