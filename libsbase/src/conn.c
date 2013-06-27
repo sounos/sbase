@@ -2091,6 +2091,7 @@ void conn_reset(CONN *conn)
         MMB_RESET(conn->packet);
         MMB_RESET(conn->oob);
         MMB_RESET(conn->cache);
+        MMB_RESET(conn->header);
         MMB_RESET(conn->exchange);
         chunk_reset(&(conn->chunk));
         chunk_reset(&(conn->chunk2));
@@ -2148,6 +2149,8 @@ void conn_clean(CONN *conn)
         MMB_DESTROY(conn->oob);
         /* Clean cache */
         MMB_DESTROY(conn->cache);
+        /* Clean header */
+        MMB_DESTROY(conn->header);
         /* Clean packet */
         MMB_DESTROY(conn->packet);
         /* Clean exchange */
