@@ -580,6 +580,7 @@ typedef struct _CONN
     int (*read_chunk)(struct _CONN *);
     int (*recv_chunk)(struct _CONN *, int size);
     int (*recv2_chunk)(struct _CONN *, int size, char *data, int ndata);
+    int (*store_chunk)(struct _CONN *, char *data, int ndata);
     int (*recv_file)(struct _CONN *, char *file, long long offset, long long size);
     int (*push_chunk)(struct _CONN *, void *data, int size);
     int (*push_file)(struct _CONN *, char *file, long long offset, long long size);

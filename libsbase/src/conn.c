@@ -1770,15 +1770,40 @@ int conn_recv_chunk(CONN *conn, int size)
     return ret;
 }
 
+/* store chunk */
+int conn_store_chunk(CONN *conn, char *block, int size)
+{
+    int ret = -1;
+
+    if(conn && size > 0)
+    {
+        DEBUG_LOGGER(conn->logger, "Ready for store-chunk size:%d from %s:%d on %s:%d via %d", size, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd);
+        chunk_destroy(&(conn->chunk));
+        chunk_rebuild(&(conn->chunk), block, size); 
+        conn->s_state = S_STATE_READ_CHUNK;
+        if(conn->d_state & D_STATE_CLOSE)
+        {
+            conn->chunk_reader(conn);
+        }
+        else
+        {
+            PUSH_INQMESSAGE(conn, MESSAGE_CHUNKIO);
+        }
+        ret = 0;
+    }
+    return ret;
+}
+
+
 /* receive and fill to chunk */
 int conn_recv2_chunk(CONN *conn, int size, char *data, int ndata)
 {
     int ret = -1;
 
-    if(conn && ndata >= 0)
+    if(conn && data && ndata >= 0)
     {
         DEBUG_LOGGER(conn->logger, "Ready for recv2-chunk size:%d from %s:%d on %s:%d via %d", size, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd);
-        chunk_mem(&conn->chunk, size+ndata);
+        chunk_mem(&(conn->chunk), size+ndata);
         if(data && ndata > 0)
         {
             CHUNK_FILL(&conn->chunk, data, ndata);
@@ -1901,8 +1926,7 @@ int conn_relay_chunk(CONN *conn, CB_DATA *chunk, int len)
     if(conn && chunk && len > 0)
     {
         cp = &(conn->xchunk);
-        memcpy(cp, (void *)chunk, sizeof(CHUNK));
-        chunk_rebuild(cp, len);
+        chunk_fork(cp, chunk, len);
         SENDQPUSH(conn, cp);
         CONN_OUTEVENT_MESSAGE(conn);
         ACCESS_LOGGER(conn->logger, "relay chunk[%p] len[%d][%d] to %s:%d queue[%p] total %d on %s:%d via %d", chunk, len, CHK(cp)->bsize, conn->remote_ip,conn->remote_port, SENDQ(conn), SENDQTOTAL(conn), conn->local_ip, conn->local_port, conn->fd);
@@ -2226,6 +2250,7 @@ CONN *conn_init()
         conn->read_chunk            = conn_read_chunk;
         conn->recv_chunk            = conn_recv_chunk;
         conn->recv2_chunk           = conn_recv2_chunk;
+        conn->store_chunk           = conn_store_chunk;
         conn->push_chunk            = conn_push_chunk;
         conn->recv_file             = conn_recv_file;
         conn->push_file             = conn_push_file;

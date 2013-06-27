@@ -113,6 +113,9 @@ void conn_reset_chunk2(CONN *conn);
 /* receive chunk file */
 int conn_recv_file(CONN *conn, char *file, long long offset, long long size);
 
+/* store chunk */
+int conn_store_chunk(CONN *conn, char *block, int size);
+
 /* push chunk file */
 int conn_push_file(CONN *conn, char *file, long long offset, long long size);
 

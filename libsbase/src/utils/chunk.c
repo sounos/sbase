@@ -428,11 +428,12 @@ int chunk_file_fill(void *chunk, char *data, int ndata)
     return ret;
 }
 
-/* chunk rebuil */
-void chunk_rebuild(void *chunk, int len)
+/* chunk fork */
+void chunk_fork(void *chunk, void *old, int len)
 {
-    if(chunk)
+    if(chunk && old)
     {
+        memcpy(chunk, old, sizeof(CHUNK));
         CHK(chunk)->status = CHUNK_STATUS_ON;
         if(CHK(chunk)->data) CHK(chunk)->end = CHK(chunk)->data;
         if(len > 0) CHK(chunk)->left = CHK(chunk)->size = CHK(chunk)->ndata = len;
@@ -440,15 +441,32 @@ void chunk_rebuild(void *chunk, int len)
     return;
 }
 
+/* chunk rebuild */
+void chunk_rebuild(void *chunk, char *block, int nblock)
+{
+    if(chunk && block && nblock > 0)
+    {
+        CHK(chunk)->data = block;
+        CHK(chunk)->flag |= CHUNK_FLAG_REBUILD;
+        CHK(chunk)->type = CHUNK_MEM;
+        CHK(chunk)->status = CHUNK_STATUS_ON;
+        CHK(chunk)->size = CHK(chunk)->left = nblock;
+        CHK(chunk)->end = CHK(chunk)->data;
+        CHK(chunk)->data[nblock] = 0;
+        CHK(chunk)->ndata = 0;
+    }
+    return ;
+}
+
 /* chunk reset */
 void chunk_reset(void *chunk)
 {
     if(chunk)
     {
-        if(CHK(chunk)->mmap) munmap(CHK(chunk)->mmap, MMAP_CHUNK_SIZE);
+        if(CHK(chunk)->mmap && !CHK(chunk)->flag) munmap(CHK(chunk)->mmap, MMAP_CHUNK_SIZE);
         CHK(chunk)->mmap = NULL;
         CHK(chunk)->mmleft = 0;
-        if(CHK(chunk)->fd > 0) close(CHK(chunk)->fd);
+        if(CHK(chunk)->fd > 0 && !CHK(chunk)->flag) close(CHK(chunk)->fd);
         CHK(chunk)->fd = 0;
         CHK(chunk)->status = 0;
         CHK(chunk)->type = 0;
@@ -457,6 +475,11 @@ void chunk_reset(void *chunk)
         CHK(chunk)->left = 0;
         CHK(chunk)->mmoff = 0;
         CHK(chunk)->mmleft = 0;
+        if(CHK(chunk)->flag)
+        {
+             CHK(chunk)->data = NULL;
+             CHK(chunk)->bsize = 0;
+        }
         if(CHK(chunk)->bsize > CHUNK_BLOCK_MAX)
         {
             xmm_free(CHK(chunk)->data, CHK(chunk)->bsize);
@@ -474,9 +497,12 @@ void chunk_destroy(void *chunk)
 {
     if(chunk)
     {
-        if(CHK(chunk)->mmap) munmap(CHK(chunk)->mmap, MMAP_CHUNK_SIZE);
-        xmm_free(CHK(chunk)->data, CHK(chunk)->bsize);
-        if(CHK(chunk)->fd > 0) close(CHK(chunk)->fd);
+        if(CHK(chunk)->mmap && !CHK(chunk)->flag) munmap(CHK(chunk)->mmap, MMAP_CHUNK_SIZE);
+        CHK(chunk)->mmap = NULL;
+        if(CHK(chunk)->data && !CHK(chunk)->flag) xmm_free(CHK(chunk)->data, CHK(chunk)->bsize);
+        CHK(chunk)->data = NULL;
+        if(CHK(chunk)->fd > 0 && !CHK(chunk)->flag) close(CHK(chunk)->fd);
+        CHK(chunk)->fd = 0;
     }
     return ;
 }
@@ -486,9 +512,12 @@ void chunk_clean(void *chunk)
 {
     if(chunk)
     {
-        if(CHK(chunk)->mmap) munmap(CHK(chunk)->mmap, MMAP_CHUNK_SIZE);
-        xmm_free(CHK(chunk)->data, CHK(chunk)->bsize);
-        if(CHK(chunk)->fd > 0) close(CHK(chunk)->fd);
+        if(CHK(chunk)->mmap && !CHK(chunk)->flag) munmap(CHK(chunk)->mmap, MMAP_CHUNK_SIZE);
+        CHK(chunk)->mmap = NULL;
+        if(CHK(chunk)->data && !CHK(chunk)->flag) xmm_free(CHK(chunk)->data, CHK(chunk)->bsize);
+        CHK(chunk)->data = NULL;
+        if(CHK(chunk)->fd > 0 && !CHK(chunk)->flag) close(CHK(chunk)->fd);
+        CHK(chunk)->fd = 0;
         xmm_free(chunk, sizeof(CHUNK));
     }
     return ;

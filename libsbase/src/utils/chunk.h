@@ -30,6 +30,7 @@ extern "C" {
 #define CHUNK_BLOCK_SIZE        4096
 #endif
 #define CHUNK_FLAG_REUSE        0x01
+#define CHUNK_FLAG_REBUILD      0x02
 #define CHUNK_STATUS_ON         0x01
 #define CHUNK_STATUS_OVER       0x02
 #ifndef __TYPEDEF__CHUNK
@@ -99,8 +100,10 @@ int chunk_write_from_file_SSL(void *chunk, void *ssl);
 int chunk_file_fill(void *chunk, char *data, int ndata);
 /* chunk reset */
 void chunk_reset(void *chunk);
+/* chunk fork */
+void chunk_fork(void *chunk, void *old, int len);
 /* chunk rebuild */
-void chunk_rebuild(void *chunk, int len);
+void chunk_rebuild(void *chunk, char *block, int nblock);
 /* chunk destroy */
 void chunk_destroy(void *chunk);
 /* clean chunk */
