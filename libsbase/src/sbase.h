@@ -504,7 +504,7 @@ typedef struct _CONN
     MMBLOCK exchange;
     CHUNK chunk;
     CHUNK chunk2;
-    CHUNK xchunk;
+    QBLOCK xblock;
     QBLOCK qblocks[SB_QBLOCK_MAX];
     QBLOCK *qleft[SB_QBLOCK_MAX];
     QBLOCK *qhead;

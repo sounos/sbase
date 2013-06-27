@@ -1925,7 +1925,7 @@ int conn_relay_chunk(CONN *conn, char *data, int ndata)
 
     if(conn && data && ndata > 0)
     {
-        cp = &(conn->xchunk);
+        cp = (CHUNK *)&(conn->xblock);
         chunk_rebuild(cp, data, ndata); 
         SENDQPUSH(conn, cp);
         CONN_OUTEVENT_MESSAGE(conn);
