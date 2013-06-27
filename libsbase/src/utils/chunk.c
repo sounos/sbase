@@ -447,13 +447,11 @@ void chunk_rebuild(void *chunk, char *block, int nblock)
     if(chunk && block && nblock > 0)
     {
         CHK(chunk)->data = block;
-        CHK(chunk)->flag |= CHUNK_FLAG_REBUILD;
+        CHK(chunk)->flag = CHUNK_FLAG_REBUILD;
         CHK(chunk)->type = CHUNK_MEM;
         CHK(chunk)->status = CHUNK_STATUS_ON;
-        CHK(chunk)->size = CHK(chunk)->left = nblock;
+        CHK(chunk)->size = CHK(chunk)->left = CHK(chunk)->ndata = nblock;
         CHK(chunk)->end = CHK(chunk)->data;
-        CHK(chunk)->data[nblock] = 0;
-        CHK(chunk)->ndata = 0;
     }
     return ;
 }

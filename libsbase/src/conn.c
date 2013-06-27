@@ -1775,7 +1775,7 @@ int conn_store_chunk(CONN *conn, char *block, int size)
 {
     int ret = -1;
 
-    if(conn && size > 0)
+    if(conn && block && size > 0)
     {
         DEBUG_LOGGER(conn->logger, "Ready for store-chunk size:%d from %s:%d on %s:%d via %d", size, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd);
         chunk_destroy(&(conn->chunk));
