@@ -564,6 +564,7 @@ typedef struct _CONN
     int (*packet_reader)(struct _CONN *);
     int (*packet_handler)(struct _CONN *);
     int (*oob_handler)(struct _CONN *);
+    int (*okconn_handler)(struct _CONN *);
     int (*chunk_handler)(struct _CONN *);
     int (*data_handler)(struct _CONN *);
     int (*bind_proxy)(struct _CONN *, struct _CONN *);

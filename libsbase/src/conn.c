@@ -541,10 +541,7 @@ void conn_event_handler(int event_fd, int event, void *arg)
                 if(PPARENT(conn) && PPARENT(conn)->service)
                     PPARENT(conn)->service->okconn(PPARENT(conn)->service, conn);
                 event_del(&(conn->event), E_WRITE);
-                if(conn->session.ok_handler) 
-                {
-                    conn->session.ok_handler(conn);
-                }
+                conn_push_message(conn, MESSAGE_OKCONN);
                 return ;
             }
             if(conn->ssl) 
@@ -1356,6 +1353,20 @@ int conn_packet_handler(CONN *conn)
             DEBUG_LOGGER(conn->logger, "Reset packet_handler(%p) buffer:[%d/%d] on %s:%d via %d", conn->session.packet_handler, MMB_LEFT(conn->buffer), MMB_SIZE(conn->buffer), conn->remote_ip, conn->remote_port, conn->fd);
             SESSION_RESET(conn);
         }
+    }
+    return ret;
+}
+
+/* okconn handler */
+int conn_okconn_handler(CONN *conn)
+{
+    int ret = -1;
+
+    if(conn && conn->session.ok_handler)
+    {
+        DEBUG_LOGGER(conn->logger, "okconn_handler(%p) on %s:%d via %d", conn->session.ok_handler, conn->remote_ip, conn->remote_port, conn->fd);
+        ret = conn->session.ok_handler(conn);
+        DEBUG_LOGGER(conn->logger, "over okconn_handler(%p) on %s:%d via %d", conn->session.ok_handler, conn->remote_ip, conn->remote_port, conn->fd);
     }
     return ret;
 }
@@ -2236,6 +2247,7 @@ CONN *conn_init()
         conn->packet_reader         = conn_packet_reader;
         conn->packet_handler        = conn_packet_handler;
         conn->oob_handler           = conn_oob_handler;
+        conn->okconn_handler        = conn_okconn_handler;
         conn->chunk_handler         = conn_chunk_handler;
         conn->data_handler          = conn_data_handler;
         conn->bind_proxy            = conn_bind_proxy;

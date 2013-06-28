@@ -53,6 +53,9 @@ int conn_packet_reader(CONN *conn);
 /* packet handler */
 int conn_packet_handler(CONN *conn);
 
+/* okconn handler */
+int conn_okconn_handler(CONN *conn);
+
 /* oob data handler */
 int conn_oob_handler(CONN *conn);
 

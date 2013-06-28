@@ -240,6 +240,9 @@ void qmessage_handler(void *qmsg, void *logger)
                 case MESSAGE_CHUNKIO :
                     conn->chunkio_handler(conn);
                     break;
+                case MESSAGE_OKCONN :
+                    conn->okconn_handler(conn);
+                    break;
                 case MESSAGE_DATA :
                     conn->data_handler(conn);
                     break;
