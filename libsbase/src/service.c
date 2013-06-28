@@ -911,7 +911,7 @@ CONN *service_addconn(SERVICE *service, int sock_type, int fd, char *remote_ip, 
             }
             else if(service->working_mode == WORKING_THREAD && service->nprocthreads > 0)
             {
-                ACCESS_LOGGER(service->logger, "adding connection[%p][%s:%d] local[%s:%d] dstate:%d via %d", conn, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->d_state, conn->fd);
+                ACCESS_LOGGER(service->logger, "adding connection[%p][%s:%d] group[%d] local[%s:%d] dstate:%d via %d", conn, conn->remote_ip, conn->remote_port, conn->groupid, conn->local_ip, conn->local_port, conn->d_state, conn->fd);
                 index = fd % service->nprocthreads;
                 if(service->procthreads && (procthread = service->procthreads[index])) 
                 {
@@ -1165,6 +1165,7 @@ int service_freeconn(SERVICE *service, CONN *conn)
         {
             if(service->groups[id].limit <= 0)
             {
+                DEBUG_LOGGER(service->logger, "close conn[%s:%d] group[%d] remote[%s:%d] via %d to groups[%d] free:%d", conn->local_ip, conn->local_port, conn->groupid, conn->remote_ip, conn->remote_port, conn->fd, id, service->groups[id].nconns_free);
                 conn->close(conn);
             }
             else
@@ -1204,6 +1205,7 @@ int service_freeconn(SERVICE *service, CONN *conn)
             }
             else
             {
+                DEBUG_LOGGER(service->logger, "close conn[%s:%d] group[%d] remote[%s:%d] via %d", conn->local_ip, conn->local_port, conn->groupid, conn->remote_ip, conn->remote_port, conn->fd);
                 conn->close(conn);
             }
         }

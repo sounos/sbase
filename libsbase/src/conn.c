@@ -536,7 +536,7 @@ void conn_event_handler(int event_fd, int event, void *arg)
                     conn_shut(conn, D_STATE_CLOSE, E_STATE_ON);          
                     return ;
                 }
-                DEBUG_LOGGER(conn->logger, "Connection[%s:%d] local[%s:%d] via %d is OK event[%d]", conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd, event);
+                DEBUG_LOGGER(conn->logger, "Connection[%s:%d] group[%d] local[%s:%d] via %d is OK event[%d]", conn->remote_ip, conn->remote_port, conn->groupid, conn->local_ip, conn->local_port, conn->fd, event);
                 //set conn->status
                 if(PPARENT(conn) && PPARENT(conn)->service)
                     PPARENT(conn)->service->okconn(PPARENT(conn)->service, conn);
@@ -872,9 +872,11 @@ int conn_timeout_handler(CONN *conn)
     {
         if(conn->evstate == EVSTATE_WAIT && conn->session.evtimeout_handler)
         {
+            DEBUG_LOGGER(conn->logger, "evtimeout_handler(%d) on remote[%s:%d] local[%s:%d] via %d", conn->timeout, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd);
             conn->evstate = EVSTATE_INIT;
             conn_over_timeout(conn);
             ret = conn->session.evtimeout_handler(conn);
+            DEBUG_LOGGER(conn->logger, "over evtimeout_handler(%d) on remote[%s:%d] local[%s:%d] via %d", conn->timeout, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd);
             return ret;
         }
         if(conn->session.timeout_handler)
@@ -2000,7 +2002,10 @@ int conn_over_session(CONN *conn)
         else
         {
             if(PPARENT(conn)->service->service_type == C_SERVICE)
+            {
+                DEBUG_LOGGER(conn->logger, "free conn[%p][%s:%d] group[%d] local[%s:%d] via %d", conn, conn->remote_ip, conn->remote_port, conn->groupid, conn->local_ip, conn->local_port, conn->fd);
                 PPARENT(conn)->service->freeconn(PPARENT(conn)->service, conn);
+            }
         }
         ret = 0;
     }
