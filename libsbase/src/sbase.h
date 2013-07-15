@@ -191,6 +191,7 @@ typedef struct _SESSION
     int (*evtimeout_handler)(struct _CONN *);
     int (*transaction_handler)(struct _CONN *, int tid);
     int (*ok_handler)(struct _CONN *);
+    int (*sendover_handler)(struct _CONN *);
 }SESSION;
 
 typedef void (CALLBACK)(void *);

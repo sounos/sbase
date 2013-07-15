@@ -1138,6 +1138,7 @@ int conn_write_handler(CONN *conn)
                 if(chunk_over)
                 {
                     CONN_OUTEVENT_DEL(conn);
+                    if(conn->session.sendover_handler) conn->session.sendover_handler(conn);
                     if(conn->session.flags & SB_MULTICAST)
                     {
                         conn_push_message(conn, MESSAGE_FREE);
@@ -1226,6 +1227,7 @@ int conn_send_handler(CONN *conn)
                 if(chunk_over)
                 {
                     CONN_OUTEVENT_DEL(conn);
+                    if(conn->session.sendover_handler) conn->session.sendover_handler(conn);
                     if(conn->session.flags & SB_MULTICAST)
                     {
                         conn_push_message(conn, MESSAGE_FREE);
