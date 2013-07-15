@@ -1320,11 +1320,13 @@ end:
                     && (n = conn->session.quick_handler(conn, PCB(conn->packet))) > 0)
             {
                 ACCESS_LOGGER(conn->logger, "fill-chunk left[%d/%d] from %s:%d on %s:%d via %d", CHK_LEFT(conn->chunk), n, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd);
-                chunk_mem(&(conn->chunk), n);
-                conn->s_state = S_STATE_READ_CHUNK;
+                if(conn->s_state != S_STATE_READ_CHUNK)
+                {
+                    chunk_mem(&(conn->chunk), n);
+                    conn->s_state = S_STATE_READ_CHUNK;
+                }
                 conn__read__chunk(conn);
                 ACCESS_LOGGER(conn->logger, "Read-chunk left[%d/%d] from %s:%d on %s:%d via %d", CHK_LEFT(conn->chunk), n, conn->remote_ip, conn->remote_port, conn->local_ip, conn->local_port, conn->fd);
-
             }
             else
             {
