@@ -11,6 +11,8 @@
 #include <sys/mman.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 #include <sbase.h>
 #ifdef HAVE_ZLIB
 #include <zlib.h>
@@ -92,6 +94,26 @@ int xhttpd_mkdir(char *path, int mode)
     return -1;
 }
 
+int http_proxy_packet_reader(CONN *conn, CB_DATA *buffer)
+{
+    char *p = NULL, *end = NULL;
+    int n = -1;
+
+    if(conn && buffer && buffer->ndata > 0 && (p = buffer->data)
+            && (end = (buffer->data + buffer->ndata)))
+    {
+        while(p < end)
+        {
+            if(p < (end - 3) && *p == '\r' && *(p+1) == '\n' && *(p+2) == '\r' && *(p+3) == '\n')
+            {
+                n = p + 4 - buffer->data;
+                break;
+            }
+            else ++p;
+        }
+    }
+    return n;
+}
 
 /* xhttpd packet reader */
 int xhttpd_packet_reader(CONN *conn, CB_DATA *buffer)
@@ -379,6 +401,7 @@ int xhttpd_resp_handler(CONN *conn, CB_DATA *packet)
     }
     return 0;
 }
+
 /* httpd file compress */
 int xhttpd_compress_handler(CONN *conn, HTTP_REQ *http_req, char *host, int is_need_compress, int mimeid,
         char *file, char *root, off_t from, off_t to, struct stat *st)
@@ -548,21 +571,34 @@ err:
     return -1;
 }
 
+/* exchange */
+int xhttpd_exchange_handler(CONN *conn, CB_DATA *exchange)
+{
+    fprintf(stdout, "%s\n", exchange->data);
+    return 0;
+}
+
 /* xhttpd bind proxy */
 int xhttpd_bind_proxy(CONN *conn, char *host, int port) 
 {
     CONN *new_conn = NULL;
     SESSION session = {0};
-    char *ip = NULL;
+    struct hostent *hp = NULL;
+    char *ip = NULL, cip[16];
+    unsigned char *sip = NULL;
     SERVICE *service = NULL;
 
-    if(conn && host && port > 0 && (service = (SERVICE *)conn->service))
+    if(conn && host && port > 0 && (hp = gethostbyname(host)) 
+            && sprintf(cip, "%s", inet_ntoa(*((struct in_addr *)(hp->h_addr))))> 0
+            && (service = (SERVICE *)conn->service))
     {
-        if(ip)
+        if((ip = cip))
         {
             memset(&session, 0, sizeof(SESSION));
             session.packet_type = PACKET_PROXY;
+            session.flags |= SB_USE_SSL;
             session.timeout = httpd_proxy_timeout;
+            session.exchange_handler = &xhttpd_exchange_handler;
             if((new_conn = service->newproxy(service, conn, -1, -1, ip, port, &session)))
             {
                 new_conn->start_cstate(new_conn);
@@ -570,6 +606,93 @@ int xhttpd_bind_proxy(CONN *conn, char *host, int port)
             }
         }
     }
+    return -1;
+}
+
+int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
+{
+    char buf[HTTP_BUF_SIZE], *host = "api.parse.com", *path = NULL, *s = NULL, *p = NULL;
+    int n = 0, i = 0, port = conn->local_port;
+    if(conn)
+    {
+        p = http_req->path;
+        if(strncasecmp(p, "http://", 7) == 0)
+        {
+            p += 7;
+            host = p;
+            while(*p != '\0' && *p != ':' && *p != '/') ++p;
+            if(*p == ':')
+            {
+                *p++ = '\0';
+                port = atoi(p);
+                while(*p >= '0' && *p <= '9') ++p;
+                path = p;
+            }
+            else if(*p == '/') {*p++ = '\0'; path = p;}
+            else if(*p == '\0') path = "";
+            else path = p;
+        }
+        else
+        {
+            if((n = http_req->headers[HEAD_REQ_HOST]) > 0 )
+            {
+                path = p;
+                host = (http_req->hlines + n);
+            }
+            else goto err_end;
+        }
+        if(path && *path == '/') ++path;
+        if(path == NULL) path = "";
+        if(http_req->reqid == HTTP_GET)
+        {
+            p = buf;
+            p += sprintf(p, "GET /%s HTTP/1.1\r\n", path);
+            if(host) p += sprintf(p, "Host: %s\r\n", host);
+            for(i = 0; i < HTTP_HEADER_NUM; i++)
+            {
+                if(HEAD_REQ_HOST == i && host) continue;
+                if(HEAD_REQ_REFERER == i || HEAD_REQ_COOKIE == i) continue;
+                if((n = http_req->headers[i]) > 0 && (s = (http_req->hlines + n)))
+                {
+                    p += sprintf(p, "%s %s\r\n", http_headers[i].e, s);
+                }
+            }
+            p += sprintf(p, "%s", "\r\n");
+            conn->push_exchange(conn, buf, (p - buf));
+        }
+        else if(http_req->reqid == HTTP_POST)
+        {
+            p = buf;
+            p += sprintf(p, "POST /%s HTTP/1.1\r\n", path);
+            if(host) p += sprintf(p, "Host: %s\r\n", host);
+            for(i = 0; i < HTTP_HEADER_NUM; i++)
+            {
+                if(HEAD_REQ_HOST == i && host) continue;
+                //HEAD_REQ_COOKIE
+                if(HEAD_REQ_REFERER == i) continue;
+                if((n = http_req->headers[i]) > 0 && (s = http_req->hlines + n))
+                {
+                    p += sprintf(p, "%s %s\r\n", http_headers[i].e, s);
+                }
+            }
+            p += sprintf(p, "%s", "\r\n");
+            conn->push_exchange(conn, buf, (p - buf));
+            REALLOG(default_logger, "proxy_req:%s", buf);
+            conn->push_exchange(conn, conn->chunk.data, conn->chunk.ndata);
+            /*
+            if((n = http_req->headers[HEAD_ENT_CONTENT_LENGTH]) > 0
+                    && (n = atol(http_req->hlines + n)) > 0)
+            {
+                conn->recv_chunk(conn, n);
+            }
+            */
+        }
+        else goto err_end;
+        if(xhttpd_bind_proxy(conn, host, port) == -1) goto err_end;
+        return 0;
+    }
+err_end:
+    conn->push_chunk(conn, HTTP_BAD_REQUEST, strlen(HTTP_BAD_REQUEST));
     return -1;
 }
 
@@ -586,7 +709,7 @@ int xhttpd_timeout_handler(CONN *conn, CB_DATA *packet, CB_DATA *cache, CB_DATA 
 {
     if(conn)
     {
-        conn->over(conn);
+        //conn->over(conn);
     }
     return 0;
 }
@@ -608,7 +731,7 @@ int xhttpd_packet_handler(CONN *conn, CB_DATA *packet)
     if(conn && packet)
     {
         p = packet->data;end = packet->data + packet->ndata;
-        //fprintf(stdout, "header:%s\r\n", p);
+        REALLOG(default_logger, "header:%s", p);
         //return xhttpd_index_view(conn, &http_req, httpd_home, "/");
         if(http_request_parse(p, end, &http_req, http_headers_map) == -1) goto err;
         //get vhost
@@ -856,7 +979,10 @@ int xhttpd_data_handler(CONN *conn, CB_DATA *packet, CB_DATA *cache, CB_DATA *ch
 {
     if(conn)
     {
-        return conn->push_chunk(conn, HTTP_NO_CONTENT, strlen(HTTP_NO_CONTENT));
+        REALLOG(default_logger, "data:%s", chunk->data);
+        return xhttpd_proxy_handler(conn, (HTTP_REQ *)(cache->data));
+        //return conn->push_chunk(conn, HTTP_NO_CONTENT, strlen(HTTP_NO_CONTENT));
+        return 0;
     }
     return -1;
 }
@@ -997,7 +1123,7 @@ int sbase_initialize(SBASE *sbase, char *conf)
     httpd->session.timeout_handler = &xhttpd_timeout_handler;
     httpd->session.data_handler = &xhttpd_data_handler;
     httpd->session.oob_handler = &xhttpd_oob_handler;
-    httpd->session.timeout = HTTPD_TIMEOUT;
+    //httpd->session.timeout = HTTPD_TIMEOUT;
     if(httpsd)
     {
         httpsd->family = iniparser_getint(dict, "XHTTPD:inet_family", AF_INET);
@@ -1056,8 +1182,8 @@ int sbase_initialize(SBASE *sbase, char *conf)
     }
     if((p = iniparser_getstr(dict, "XHTTPD:access_log_dir")))
     {
-	httpd_access_log_dir = p;
-	sprintf(path, "%s/httpd_access.log", p);
+        httpd_access_log_dir = p;
+        sprintf(path, "%s/httpd_access.log", p);
         LOGGER_INIT(default_logger, path);
     }
     //name map

@@ -192,6 +192,7 @@ typedef struct _SESSION
     int (*transaction_handler)(struct _CONN *, int tid);
     int (*ok_handler)(struct _CONN *);
     int (*sendover_handler)(struct _CONN *);
+    int (*exchange_handler)(struct _CONN *, CB_DATA *exchange);
 }SESSION;
 
 typedef void (CALLBACK)(void *);

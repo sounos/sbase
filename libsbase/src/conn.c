@@ -1049,6 +1049,7 @@ int conn_read_handler(CONN *conn)
         if(conn->ssl) 
         {
             n = MMB_READ_SSL(conn->buffer, conn->ssl);
+            //ACCESS_LOGGER(conn->logger, "read ssl data:%s", conn->buffer.data);
         }
 	    else 
         {
@@ -1503,12 +1504,14 @@ int conn_proxy_handler(CONN *conn)
         if((exchange = PCB(conn->exchange)) && exchange->ndata > 0)
         {
             DEBUG_LOGGER(conn->logger, "Ready exchange packet[%d] to conn[%s:%d]", exchange->ndata, oconn->remote_ip, oconn->remote_port);
+            if(conn->session.exchange_handler) conn->session.exchange_handler(conn, exchange);
             oconn->push_chunk(oconn, exchange->data, exchange->ndata);
             MMB_RESET(conn->exchange);
         }
         if((chunk = PCB(conn->chunk)) && chunk->ndata > 0)
         {
             DEBUG_LOGGER(conn->logger, "Ready exchange chunk[%d] to conn[%s:%d]", chunk->ndata, oconn->remote_ip, oconn->remote_port);
+            if(conn->session.exchange_handler) conn->session.exchange_handler(conn, chunk);
             oconn->push_chunk(oconn, chunk->data, chunk->ndata);
             chunk_reset(&conn->chunk);
         }
@@ -1516,6 +1519,8 @@ int conn_proxy_handler(CONN *conn)
                 && (buffer = PCB(conn->buffer)) && buffer->ndata > 0)
         {
             DEBUG_LOGGER(conn->logger, "Ready exchange buffer[%d] to conn[%s:%d]", buffer->ndata, oconn->remote_ip, oconn->remote_port);
+            if(conn->session.exchange_handler) conn->session.exchange_handler(conn, buffer);
+
             oconn->push_chunk(oconn, buffer->data, buffer->ndata);
             MMB_DELETE(conn->buffer, buffer->ndata);
         }
