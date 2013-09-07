@@ -612,7 +612,7 @@ int xhttpd_bind_proxy(CONN *conn, char *host, int port)
         {
             memset(&session, 0, sizeof(SESSION));
             session.packet_type = PACKET_PROXY;
-            session.flags |= SB_USE_SSL;
+            if(service->is_use_SSL) session.flags |= SB_USE_SSL;
             session.timeout = httpd_proxy_timeout;
             session.exchange_handler = &xhttpd_exchange_handler;
             if((new_conn = service->newproxy(service, conn, -1, -1, ip, port, &session)))
@@ -692,6 +692,7 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
                 }
             }
             p += sprintf(p, "%s", "\r\n");
+            fprintf(stdout, "host:%s port:%d\n", host, port);
             conn->push_exchange(conn, buf, (p - buf));
             fprintf(stdout, "%s", buf);
             conn->push_exchange(conn, conn->chunk.data, conn->chunk.ndata);
@@ -999,7 +1000,6 @@ int xhttpd_data_handler(CONN *conn, CB_DATA *packet, CB_DATA *cache, CB_DATA *ch
         //REALLOG(default_logger, "data:%s", chunk->data);
         return xhttpd_proxy_handler(conn, (HTTP_REQ *)(cache->data));
         //return conn->push_chunk(conn, HTTP_NO_CONTENT, strlen(HTTP_NO_CONTENT));
-        return 0;
     }
     return -1;
 }

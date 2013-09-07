@@ -172,7 +172,6 @@ typedef struct _SESSION
     int  multicast_ttl;
     int  xids[SB_XIDS_MAX];
 
-
     void *child;
     void *ctx;
     void *ssl_servername_arg;
