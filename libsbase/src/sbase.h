@@ -53,6 +53,7 @@ extern "C" {
 #define SB_NEWCONN_DELAY        0x8000
 #define SB_MULTICAST_IN         0x01
 #define SB_MULTICAST_MAX        256
+#define SB_SSLCERTS_MAX         256
 /* service type */
 #define S_SERVICE               0x00
 #define C_SERVICE               0x01
@@ -174,6 +175,7 @@ typedef struct _SESSION
 
     void *child;
     void *ctx;
+    void *ssl_servername_arg;
     void *parent;
     char *packet_delimiter;
 
@@ -193,6 +195,7 @@ typedef struct _SESSION
     int (*ok_handler)(struct _CONN *);
     int (*sendover_handler)(struct _CONN *);
     int (*exchange_handler)(struct _CONN *, CB_DATA *exchange);
+    int (*ssl_servername_handler)(void *ssl, int *, void *arg);
 }SESSION;
 
 typedef void (CALLBACK)(void *);
@@ -252,7 +255,13 @@ typedef struct _CNGROUP
   char  ip[SB_IP_MAX];
   SESSION session;
 }CNGROUP;
-
+typedef struct _SSLCRTS
+{
+    char *name;
+    char *cert;
+    char *priv;
+    void *ssl_cxt;
+}SSLCRTS;
 /* service */
 typedef struct _SERVICE
 {
@@ -323,6 +332,7 @@ typedef struct _SERVICE
     ushort multicasts[SB_MULTICAST_MAX];
         
     /* SSL */
+    SSLCRTS ssl_certs[SB_SSLCERTS_MAX];
     char *cacert_file;
     char *privkey_file;
     void *s_ctx;

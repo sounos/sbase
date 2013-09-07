@@ -98,32 +98,39 @@ int service_set(SERVICE *service)
         if(service->service_type == S_SERVICE)
         {
 #ifdef HAVE_SSL
-            if(service->is_use_SSL && service->cacert_file && service->privkey_file)
+            if(service->is_use_SSL)
             {
                 if((service->s_ctx = SSL_CTX_new(SSLv23_server_method())) == NULL)
                 {
                     ERR_print_errors_fp(stdout);
                     return -1;
                 }
-                /*load certificate */
-                if(SSL_CTX_use_certificate_file(XSSL_CTX(service->s_ctx), service->cacert_file, 
-                            SSL_FILETYPE_PEM) <= 0)
+                SSL_CTX_set_tlsext_servername_callback(XSSL_CTX(service->s_ctx), 
+                        service->session.ssl_servername_handler);
+                SSL_CTX_set_tlsext_servername_arg(XSSL_CTX(service->s_ctx),
+                        service->session.ssl_servername_arg);
+                if(service->cacert_file && service->privkey_file)
                 {
-                    ERR_print_errors_fp(stdout);
-                    return -1;
-                }
-                /*load private key file */
-                if (SSL_CTX_use_PrivateKey_file(XSSL_CTX(service->s_ctx), service->privkey_file, 
-                            SSL_FILETYPE_PEM) <= 0)
-                {
-                    ERR_print_errors_fp(stdout);
-                    return -1;
-                }
-                /*check private key file */
-                if (!SSL_CTX_check_private_key(XSSL_CTX(service->s_ctx)))
-                {
-                    ERR_print_errors_fp(stdout);
-                    return -1;
+                    //load certificate 
+                    if(SSL_CTX_use_certificate_file(XSSL_CTX(service->s_ctx), service->cacert_file, 
+                                SSL_FILETYPE_PEM) <= 0)
+                    {
+                        ERR_print_errors_fp(stdout);
+                        return -1;
+                    }
+                    //load private key file 
+                    if (SSL_CTX_use_PrivateKey_file(XSSL_CTX(service->s_ctx), service->privkey_file, 
+                                SSL_FILETYPE_PEM) <= 0)
+                    {
+                        ERR_print_errors_fp(stdout);
+                        return -1;
+                    }
+                    //check private key file 
+                    if (!SSL_CTX_check_private_key(XSSL_CTX(service->s_ctx)))
+                    {
+                        ERR_print_errors_fp(stdout);
+                        return -1;
+                    }
                 }
             }
 #endif

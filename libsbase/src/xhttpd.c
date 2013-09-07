@@ -21,6 +21,7 @@
 #include <bzlib.h>
 #endif
 #include "iniparser.h"
+#include "xssl.h"
 #include "http.h"
 #include "mime.h"
 #include "mtrie.h"
@@ -59,7 +60,22 @@ static void *hostmap = NULL;
 static void *urlmap = NULL;
 static void *http_headers_map = NULL;
 static void *default_logger = NULL;
-
+static int xhttpd_SSL_hostname_callback(void *s, int *ad, void *arg)
+{
+#ifdef HAVE_SSL
+    char *servername = SSL_get_servername((SSL *)s, TLSEXT_NAMETYPE_host_name);
+    int i = 0;
+    if (servername && (i = (mtrie_get(namemap, servername, strlen(servername) - 1))) >= 0
+            && httpd_vhosts[i].s_ctx)
+    {
+        //fprintf(stdout, "servername:%s %p\n", servername, httpd_vhosts[i].s_ctx);
+        SSL_set_SSL_CTX((SSL *)s, XSSL_CTX(httpd_vhosts[i].s_ctx));
+    }
+    return SSL_TLSEXT_ERR_OK;
+#else
+    return 0;
+#endif
+}
 /* mkdir recursive */
 int xhttpd_mkdir(char *path, int mode)
 {
@@ -611,7 +627,7 @@ int xhttpd_bind_proxy(CONN *conn, char *host, int port)
 
 int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
 {
-    char buf[HTTP_BUF_SIZE], *host = "api.parse.com", *path = NULL, *s = NULL, *p = NULL;
+    char buf[HTTP_BUF_SIZE], *host = NULL, *path = NULL, *s = NULL, *p = NULL;
     int n = 0, i = 0, port = conn->local_port;
     if(conn)
     {
@@ -651,7 +667,7 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
             for(i = 0; i < HTTP_HEADER_NUM; i++)
             {
                 if(HEAD_REQ_HOST == i && host) continue;
-                if(HEAD_REQ_REFERER == i || HEAD_REQ_COOKIE == i) continue;
+                //if(HEAD_REQ_REFERER == i || HEAD_REQ_COOKIE == i) continue;
                 if((n = http_req->headers[i]) > 0 && (s = (http_req->hlines + n)))
                 {
                     p += sprintf(p, "%s %s\r\n", http_headers[i].e, s);
@@ -677,8 +693,9 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
             }
             p += sprintf(p, "%s", "\r\n");
             conn->push_exchange(conn, buf, (p - buf));
-            REALLOG(default_logger, "proxy_req:%s", buf);
+            fprintf(stdout, "%s", buf);
             conn->push_exchange(conn, conn->chunk.data, conn->chunk.ndata);
+            fprintf(stdout, "%s\n", conn->chunk.data);
             /*
             if((n = http_req->headers[HEAD_ENT_CONTENT_LENGTH]) > 0
                     && (n = atol(http_req->hlines + n)) > 0)
@@ -731,7 +748,7 @@ int xhttpd_packet_handler(CONN *conn, CB_DATA *packet)
     if(conn && packet)
     {
         p = packet->data;end = packet->data + packet->ndata;
-        REALLOG(default_logger, "header:%s", p);
+        //REALLOG(default_logger, "header:%s", p);
         //return xhttpd_index_view(conn, &http_req, httpd_home, "/");
         if(http_request_parse(p, end, &http_req, http_headers_map) == -1) goto err;
         //get vhost
@@ -1026,7 +1043,7 @@ static void xhttpd_sigpipe(int sig)
 /* Initialize from ini file */
 int sbase_initialize(SBASE *sbase, char *conf)
 {
-    char *s = NULL, *p = NULL, *cacert_file = NULL, *privkey_file = NULL, path[HTTP_PATH_MAX];
+    char *s = NULL, *p = NULL, *cert = NULL, *priv = NULL, path[HTTP_PATH_MAX];
     int n = 0, i = 0;
 
     if((dict = iniparser_new(conf)) == NULL)
@@ -1043,25 +1060,21 @@ int sbase_initialize(SBASE *sbase, char *conf)
     sbase->set_evlog(sbase, iniparser_getstr(dict, "SBASE:evlogfile"));
     sbase->set_evlog_level(sbase, iniparser_getint(dict, "SBASE:evlog_level", 0));
     setrlimiter("RLIMIT_NOFILE", RLIMIT_NOFILE, sbase->connections_limit);
-    cacert_file = iniparser_getstr(dict, "XHTTPD:cacert_file");
-    privkey_file = iniparser_getstr(dict, "XHTTPD:privkey_file");
-    if(iniparser_getint(dict, "XHTTPD:is_use_SSL", 0)) 
+    cert = iniparser_getstr(dict, "XHTTPD:cacert_file");
+    priv = iniparser_getstr(dict, "XHTTPD:privkey_file");
+    n = iniparser_getint(dict, "XHTTPD:SSL_port", 0);
+    if(iniparser_getint(dict, "XHTTPD:is_use_SSL", 0) && n > 0 
+        && (httpsd = service_init()))
     {
-        n = iniparser_getint(dict, "XHTTPD:SSL_port", 0);
-        if(n > 0 && cacert_file && access(cacert_file, F_OK) == 0 
-                && privkey_file && access(privkey_file, F_OK) == 0 
-                && (httpsd = service_init()))
-        {
-            httpsd->is_use_SSL = 1;
-            httpsd->port = n;
-            httpsd->cacert_file = cacert_file;
-            httpsd->privkey_file = privkey_file;
-        }
-        else
-        {
-            fprintf(stderr, "initialize SSL[cacert:%s key:%s port:%d] failed, %s\n", cacert_file, privkey_file, n, strerror(errno));
-            _exit(-1);
-        }
+        httpsd->is_use_SSL = 1;
+        httpsd->port = n;
+        httpsd->cacert_file = cert;
+        httpsd->privkey_file = priv;
+    }
+    else
+    {
+        fprintf(stderr, "initialize SSL[cacert:%s key:%s port:%d] failed, %s\n", cert, priv, n, strerror(errno));
+        _exit(-1);
     }
     /* XHTTPD */
     if((httpd = service_init()) == NULL)
@@ -1141,6 +1154,7 @@ int sbase_initialize(SBASE *sbase, char *conf)
         httpsd->set_log_level(httpsd, iniparser_getint(dict, "XHTTPD:SSL_log_level", 0));
         httpsd->flag = httpd->flag;
         memcpy(&(httpsd->session), &(httpd->session), sizeof(SESSION));
+        httpsd->session.ssl_servername_handler = xhttpd_SSL_hostname_callback;
     }
     //httpd home
     if((http_headers_map = http_headers_map_init()) == NULL)
@@ -1205,7 +1219,7 @@ int sbase_initialize(SBASE *sbase, char *conf)
                 ++p;
                 while(*p == 0x20 || *p == '\t' || *p == ',' || *p == ';')++p;
                 httpd_vhosts[nvhosts].name = p;
-                while(*p != ':' && *p != 0x20 && *p != '\t') ++p;
+                while(*p != ':' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
                 *p = '\0';
                 if((n = (p - httpd_vhosts[nvhosts].name)) > 0)
                 {
@@ -1214,11 +1228,51 @@ int sbase_initialize(SBASE *sbase, char *conf)
                 ++p;
                 while(*p == 0x20 || *p == '\t' || *p == ',' || *p == ';')++p;
                 httpd_vhosts[nvhosts].home = p;
-                while(*p != ']' && *p != 0x20 && *p != '\t') ++p;
+                while(*p != ':' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
                 *p++ = '\0';
-		sprintf(path, "%s/%s.access.log", httpd_access_log_dir, httpd_vhosts[nvhosts].name );
-		LOGGER_INIT(httpd_vhosts[nvhosts].logger, path);
-                ++nvhosts;
+                sprintf(path, "%s/%s.access.log", httpd_access_log_dir, httpd_vhosts[nvhosts].name );
+		        LOGGER_INIT(httpd_vhosts[nvhosts].logger, path);
+                while(*p != '{' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
+                while(*p == 0x20 || *p == '\t')++p;
+                if(*p == '{')
+                {
+                    ++p;
+                    while(*p == 0x20 || *p == '\t')++p;
+                    cert = p;
+                    while(*p != ',' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
+                    *p++ = '\0';
+                    while(*p == 0x20 || *p == '\t' || *p == ',')++p;
+                    priv = p;
+                    while(*p != '}' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
+                    *p++ = '\0';
+                    if(access(cert, F_OK) == 0 && access(priv, F_OK) == 0)
+                    {
+#ifdef HAVE_SSL
+                        httpd_vhosts[nvhosts].s_ctx = SSL_CTX_new(SSLv23_server_method()); 
+                        if(SSL_CTX_use_certificate_file(XSSL_CTX(httpd_vhosts[nvhosts].s_ctx), 
+                                    cert, SSL_FILETYPE_PEM) <= 0)
+                        {
+                            ERR_print_errors_fp(stdout);
+                            return -1;
+                        }
+                        if (SSL_CTX_use_PrivateKey_file(XSSL_CTX(httpd_vhosts[nvhosts].s_ctx),
+                                    priv, SSL_FILETYPE_PEM) <= 0)
+                        {
+                            ERR_print_errors_fp(stdout);
+                            return -1;
+                        }
+                        if (!SSL_CTX_check_private_key(XSSL_CTX(httpd_vhosts[nvhosts].s_ctx)))
+                        {
+                            ERR_print_errors_fp(stdout);
+                            return -1;
+                        }
+                        //fprintf(stdout, "home:%s name:%s cert:%s priv:%s s_ctx:%p\n", httpd_vhosts[nvhosts].home, httpd_vhosts[nvhosts].name, cert, priv, httpd_vhosts[nvhosts].s_ctx);
+#endif
+                    }
+                }
+                while(*p != ']' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
+                *p++ = '\0';
+		        ++nvhosts;
             }
         }
     }
@@ -1337,8 +1391,11 @@ int main(int argc, char **argv)
     if(http_headers_map) http_headers_map_clean(http_headers_map);
     for(i = 0; i < nvhosts; i++)
     {
-	LOGGER_CLEAN(httpd_vhosts[i].logger);
-	httpd_vhosts[i].logger = NULL;
+        LOGGER_CLEAN(httpd_vhosts[i].logger);
+        httpd_vhosts[i].logger = NULL;
+#ifdef HAVE_SSL
+        SSL_CTX_free(httpd_vhosts[i].s_ctx);
+#endif
     }
     LOGGER_CLEAN(default_logger);
     if(dict)iniparser_free(dict);
