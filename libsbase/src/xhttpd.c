@@ -996,7 +996,7 @@ int xhttpd_data_handler(CONN *conn, CB_DATA *packet, CB_DATA *cache, CB_DATA *ch
 {
     if(conn)
     {
-        REALLOG(default_logger, "data:%s", chunk->data);
+        //REALLOG(default_logger, "data:%s", chunk->data);
         return xhttpd_proxy_handler(conn, (HTTP_REQ *)(cache->data));
         //return conn->push_chunk(conn, HTTP_NO_CONTENT, strlen(HTTP_NO_CONTENT));
         return 0;
