@@ -24,6 +24,7 @@ int xhttpd_index_view(CONN *conn, HTTP_REQ *http_req, char *dir, char *path);
 int lechod_packet_reader(CONN *conn, CB_DATA *buffer)
 {
     //return xhttpd_index_view(conn, NULL, "/data", "/");
+    fprintf(stdout, "%s", buffer->data);
     return buffer->ndata;
 }
 
@@ -155,6 +156,7 @@ int lechod_packet_handler(CONN *conn, CB_DATA *packet)
         p = packet->data;
         end = packet->data + packet->ndata;
         return xhttpd_index_view(conn, NULL, "/", "/"); */
+        /*
         int x = 0, n = 0, keepalive = 0; 
         if(strcasestr(packet->data, "Keep-Alive")) keepalive = 1;
         char buf[4096], *s = "sdklhafkllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllhflkdfklasdjfkldsakfldsalkfkasdfjksdjfkdasjfklasdjfklsdjfklsjdkfljdssssssssssssssssssssssssssssssssssssssssldkfjsakldjflkajsdfkljadkfjkldajfkljd";x = strlen(s);
@@ -168,6 +170,7 @@ int lechod_packet_handler(CONN *conn, CB_DATA *packet)
 
         }
         if(keepalive == 0) conn->over(conn); 
+        */
         return 0;
         /*
         */

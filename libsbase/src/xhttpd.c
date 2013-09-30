@@ -705,6 +705,28 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
             }
             */
         }
+        else if(http_req->reqid == HTTP_PUT)
+        {
+            p = buf;
+            p += sprintf(p, "PUT /%s HTTP/1.1\r\n", path);
+            if(host) p += sprintf(p, "Host: %s\r\n", host);
+            for(i = 0; i < HTTP_HEADER_NUM; i++)
+            {
+                if(HEAD_REQ_HOST == i && host) continue;
+                //HEAD_REQ_COOKIE
+                if(HEAD_REQ_REFERER == i) continue;
+                if((n = http_req->headers[i]) > 0 && (s = http_req->hlines + n))
+                {
+                    p += sprintf(p, "%s %s\r\n", http_headers[i].e, s);
+                }
+            }
+            p += sprintf(p, "%s", "\r\n");
+            fprintf(stdout, "host:%s port:%d\n", host, port);
+            conn->push_exchange(conn, buf, (p - buf));
+            fprintf(stdout, "%s", buf);
+            conn->push_exchange(conn, conn->chunk.data, conn->chunk.ndata);
+            fprintf(stdout, "%s\n", conn->chunk.data);
+        }
         else goto err_end;
         if(xhttpd_bind_proxy(conn, host, port) == -1) goto err_end;
         return 0;
@@ -749,7 +771,7 @@ int xhttpd_packet_handler(CONN *conn, CB_DATA *packet)
     if(conn && packet)
     {
         p = packet->data;end = packet->data + packet->ndata;
-        //REALLOG(default_logger, "header:%s", p);
+        REALLOG(default_logger, "header:%s", p);
         //return xhttpd_index_view(conn, &http_req, httpd_home, "/");
         if(http_request_parse(p, end, &http_req, http_headers_map) == -1) goto err;
         //get vhost
