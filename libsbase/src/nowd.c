@@ -11,21 +11,22 @@
 #include "http.h"
 #include "stime.h"
 #include "logger.h"
-static int is_detail = 0;
 static SBASE *sbase = NULL;
 static SERVICE *service = NULL;
 static dictionary *dict = NULL;
 void *logger = NULL;
-#define HTTP_VIEW_SIZE 65536
-#define XHTTPD_VERSION "0.0.1"
 #define LL(xxx) ((long long int)xxx)
 #define http_default_charset "utf-8"
-int xhttpd_index_view(CONN *conn, HTTP_REQ *http_req, char *dir, char *path);
 int nowd_packet_reader(CONN *conn, CB_DATA *buffer)
 {
-    //return xhttpd_index_view(conn, NULL, "/data", "/");
     fprintf(stdout, "%s", buffer->data);
     return buffer->ndata;
+}
+
+int nowd_exchange_handler(CONN *conn, CB_DATA *exchange)
+{
+    fprintf(stdout, "%s\n", exchange->data);
+    return 0;
 }
 
 /* welcome handler */
@@ -37,11 +38,11 @@ int nowd_welcome_handler(CONN *conn)
         memset(&session, 0, sizeof(SESSION));
         session.packet_type = PACKET_PROXY;
         if(service->is_use_SSL) session.flags |= SB_USE_SSL;
-        session.timeout = httpd_proxy_timeout;
         session.exchange_handler = &nowd_exchange_handler;
-        if((new_conn = service->newproxy(service, conn, -1, -1, "23.22.248.181", 8253, &session)))
+        //if((service->newproxy(service, conn, -1, -1, "23.22.248.181", 8253, &session)))
+        if((service->newproxy(service, conn, -1, -1, "202.77.180.185", 443, &session)))
         {
-            //new_conn->start_cstate(new_conn);
+            fprintf(stdout, "proxy{%s:%d to 202.77.180.185:443}\n", conn->remote_ip, conn->remote_port);
             return 0;
         }
 
@@ -53,30 +54,7 @@ int nowd_packet_handler(CONN *conn, CB_DATA *packet)
 {
 	if(conn)
     {
-        /*HTTP_REQ http_req = {0};
-        char *p = NULL, *end = NULL;
-        p = packet->data;
-        end = packet->data + packet->ndata;
-        return xhttpd_index_view(conn, NULL, "/", "/"); */
-        int x = 0, n = 0, keepalive = 0; 
-        if(strcasestr(packet->data, "Keep-Alive")) keepalive = 1;
-        char buf[4096], *s = "{'data':{'action':'','alert':'hello','title':'starter'}}";x = strlen(s);
-        if(keepalive)
-        {
-            n = sprintf(buf, "HTTP/1.0 200 OK\r\nConnection: Keep-Alive\r\nContent-Length:%d\r\n\r\n%s", x, s);conn->push_chunk(conn, buf, n); 
-        }
-        else
-        {
-            n = sprintf(buf, "HTTP/1.0 200 OK\r\nContent-Length:%d\r\n\r\n%s", x, s);conn->push_chunk(conn, buf, n); 
-
-        }
-        if(keepalive == 0) conn->over(conn); 
-        /*
-        */
-        return 0;
-        /*
-        */
-		//return conn->push_chunk((CONN *)conn, ((CB_DATA *)packet)->data, packet->ndata);
+		return conn->push_chunk((CONN *)conn, ((CB_DATA *)packet)->data, packet->ndata);
     }
     return -1;
 }
@@ -86,21 +64,11 @@ int nowd_data_handler(CONN *conn, CB_DATA *packet, CB_DATA *cache, CB_DATA *chun
     return -1;
 }
 
-int nowd_oob_handler(CONN *conn, CB_DATA *oob)
-{
-    if(conn && conn->push_chunk)
-    {
-        conn->push_chunk((CONN *)conn, ((CB_DATA *)oob)->data, oob->ndata);
-        return oob->ndata;
-    }
-    return -1;
-}
-
 static void nowd_stop(int sig){
     switch (sig) {
         case SIGINT:
         case SIGTERM:
-            fprintf(stderr, "lhttpd server is interrupted by user.\n");
+            fprintf(stderr, "nowd server is interrupted by user.\n");
             if(sbase)sbase->stop(sbase);
             break;
         default:
@@ -165,10 +133,10 @@ int sbase_initialize(SBASE *sbase, char *conf)
     }
 	service->session.buffer_size = iniparser_getint(dict, "NOWD:buffer_size", SB_BUF_SIZE);
 	service->session.welcome_handler = &nowd_welcome_handler;
-	service->session.packet_reader = &nowd_packet_reader;
-	service->session.packet_handler = &nowd_packet_handler;
-	service->session.data_handler = &nowd_data_handler;
-    service->session.oob_handler = &nowd_oob_handler;
+	//service->session.packet_reader = &nowd_packet_reader;
+	//service->session.packet_handler = &nowd_packet_handler;
+	//service->session.data_handler = &nowd_data_handler;
+    //service->session.exchange_handler = &nowd_exchange_handler;
     cacert_file = iniparser_getstr(dict, "NOWD:cacert_file");
     privkey_file = iniparser_getstr(dict, "NOWD:privkey_file");
     if(cacert_file && privkey_file && iniparser_getint(dict, "NOWD:is_use_SSL", 0))
