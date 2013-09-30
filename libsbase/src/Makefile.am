@@ -28,7 +28,7 @@ libsbase_la_CPPFLAGS = -I utils -D_FILE_OFFSET_BITS=64 -Wall
 libsbase_la_LDFLAGS = -levbase
 include_HEADERS = sbase.h
 
-sbin_PROGRAMS = xhttpd lechod lhttpd
+sbin_PROGRAMS = xhttpd lechod lhttpd nowd
 
 xhttpd_SOURCES = xhttpd.c iniparser.h iniparser.c utils/http.h utils/http.c \
 				 utils/mutex.h utils/mtrie.h utils/mtrie.c utils/stime.h utils/stime.c \
@@ -42,6 +42,11 @@ lechod_SOURCES = lechod.c iniparser.h iniparser.c
 lechod_CPPFLAGS = -I utils -D_FILE_OFFSET_BITS=64 -Wall 
 lechod_LDADD = libsbase.la
 lechod_LDFLAGS = -static
+
+nowd_SOURCES = nowd.c iniparser.h iniparser.c
+nowd_CPPFLAGS = -I utils -D_FILE_OFFSET_BITS=64 -Wall 
+nowd_LDADD = libsbase.la
+nowd_LDFLAGS = -static
 
 lhttpd_SOURCES = lhttpd.c 
 lhttpd_CPPFLAGS = -I utils -D_FILE_OFFSET_BITS=64 -Wall 

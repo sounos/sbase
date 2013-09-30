@@ -179,6 +179,7 @@ typedef struct _SESSION
     char *packet_delimiter;
 
     /* methods */
+    int (*welcome_handler)(struct _CONN *);
     int (*quick_handler)(struct _CONN *, CB_DATA *packet);
     int (*error_handler)(struct _CONN *, CB_DATA *packet, CB_DATA *cache, CB_DATA *chunk);
     int (*packet_reader)(struct _CONN *, CB_DATA *buffer);

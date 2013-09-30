@@ -146,7 +146,11 @@ int xhttpd_index_view(CONN *conn, HTTP_REQ *http_req, char *dir, char *path)
     return -1;
 }
 
+/* welcome handler */
+int lechod_welcome_handler(CONN *conn)
+{
 
+}
 int lechod_packet_handler(CONN *conn, CB_DATA *packet)
 {
 	if(conn)
@@ -156,6 +160,7 @@ int lechod_packet_handler(CONN *conn, CB_DATA *packet)
         p = packet->data;
         end = packet->data + packet->ndata;
         return xhttpd_index_view(conn, NULL, "/", "/"); */
+        /*
         int x = 0, n = 0, keepalive = 0; 
         if(strcasestr(packet->data, "Keep-Alive")) keepalive = 1;
         char buf[4096], *s = "{'data':{'action':'','alert':'hello','title':'starter'}}";x = strlen(s);
@@ -169,12 +174,9 @@ int lechod_packet_handler(CONN *conn, CB_DATA *packet)
 
         }
         if(keepalive == 0) conn->over(conn); 
-        /*
-        */
         return 0;
-        /*
         */
-		//return conn->push_chunk((CONN *)conn, ((CB_DATA *)packet)->data, packet->ndata);
+		return conn->push_chunk((CONN *)conn, ((CB_DATA *)packet)->data, packet->ndata);
     }
     return -1;
 }

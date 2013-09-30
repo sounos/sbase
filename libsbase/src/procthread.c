@@ -322,6 +322,10 @@ int procthread_add_connection(PROCTHREAD *pth, CONN *conn)
         if(pth->service->pushconn(pth->service, conn) == 0 && conn->set(conn) == 0)
         {
             DEBUG_LOGGER(pth->logger, "Ready for add conn[%p][%s:%d] d_state:%d on %s:%d via %d to pool", conn, conn->remote_ip, conn->remote_port, conn->d_state, conn->local_ip, conn->local_port, conn->fd);
+            if(conn->session.welcome_handler)
+            {
+                conn->session.welcome_handler(conn);
+            }
         }
     }
     return ret;
