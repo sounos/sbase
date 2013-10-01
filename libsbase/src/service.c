@@ -673,7 +673,7 @@ CONN *service_newconn(SERVICE *service, int inet_family, int socket_type,
     int fd = -1, family = -1, sock_type = -1, remote_port = -1, 
         local_port = -1, flag = 0, opt = 0, status = 0;
     char *local_ip = NULL, *remote_ip = NULL;
-    struct sockaddr_in rsa, lsa;
+    struct sockaddr_in rsa = {0}, lsa = {0};
     socklen_t lsa_len = sizeof(lsa);
     struct linger linger = {0};
     SESSION *sess = NULL;
@@ -696,13 +696,22 @@ CONN *service_newconn(SERVICE *service, int inet_family, int socket_type,
 #ifdef HAVE_SSL
             if((sess->flags & SB_USE_SSL) &&  sock_type == SOCK_STREAM && service->c_ctx)
             {
-                if((ssl = SSL_new(XSSL_CTX(service->c_ctx))) 
-                        && connect(fd, (struct sockaddr *)&rsa, sizeof(rsa)) == 0 
-                        && SSL_set_fd((SSL *)ssl, fd) > 0 && SSL_connect((SSL *)ssl) >= 0)
+                if((ssl = SSL_new(XSSL_CTX(service->c_ctx))))
                 {
-                    goto new_conn;
+                    if(connect(fd, (struct sockaddr *)&rsa, sizeof(rsa)) == 0 
+                        && SSL_set_fd((SSL *)ssl, fd) > 0 && SSL_connect((SSL *)ssl) >= 0)
+                    {
+                        goto new_conn;
+                    }
+                    else
+                    {
+                        goto err_conn;
+                    }
                 }
-                else goto err_conn;
+                else 
+                {
+                    goto err_conn;
+                }
             }
 #endif
             if(service->flag & SB_SO_LINGER)
@@ -802,12 +811,12 @@ err_conn:
 CONN *service_newproxy(SERVICE *service, CONN *parent, int inet_family, int socket_type, 
         char *inet_ip, int inet_port, SESSION *session)
 {
-    CONN *conn = NULL;
-    struct sockaddr_in rsa, lsa;
-    socklen_t lsa_len = sizeof(lsa);
     int fd = -1, family = -1, sock_type = -1, remote_port = -1, local_port = -1;
     char *local_ip = NULL, *remote_ip = NULL;
+    struct sockaddr_in rsa = {0}, lsa = {0};
+    socklen_t lsa_len = sizeof(lsa);
     SESSION *sess = NULL;
+    CONN *conn = NULL;
     void *ssl = NULL;
 
     if(service && service->lock == 0 && parent)
@@ -830,13 +839,21 @@ CONN *service_newproxy(SERVICE *service, CONN *parent, int inet_family, int sock
                 && connect(fd, (struct sockaddr *)&rsa, sizeof(rsa)) == 0)
         {
 #ifdef HAVE_SSL
-            if((sess->flags & SB_USE_SSL) && sock_type == SOCK_STREAM && service->c_ctx)
+            if((sess->flags & SB_USE_SSL) && sock_type == SOCK_STREAM && service->c_ctx) 
             {
-                //DEBUG_LOGGER(service->logger, "SSL_newproxy() to %s:%d",remote_ip, remote_port);
-                if((ssl = SSL_new(XSSL_CTX(service->c_ctx))) 
-                        && SSL_set_fd((SSL *)ssl, fd) > 0 && SSL_connect((SSL *)ssl) >= 0)
+                if((ssl = SSL_new(XSSL_CTX(service->c_ctx))))
                 {
-                    goto new_conn;
+                    DEBUG_LOGGER(service->logger, "SSL_newproxy() to %s:%d via %d", remote_ip, remote_port, fd);
+                    if(SSL_set_fd((SSL *)ssl, fd) > 0 && SSL_connect((SSL *)ssl) >= 0)
+                    {
+                        DEBUG_LOGGER(service->logger, "SSL_newproxy() to %s:%d via %d error:%s",remote_ip, remote_port, fd, strerror(errno));
+                        goto new_conn;
+                    }
+                    else 
+                    {
+                        DEBUG_LOGGER(service->logger, "SSL_newproxy() to %s:%d via %d error:%s",remote_ip, remote_port, fd, strerror(errno));
+                        goto err_conn;
+                    }
                 }
                 else goto err_conn;
             }

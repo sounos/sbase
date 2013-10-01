@@ -12,11 +12,9 @@
 #include "stime.h"
 #include "logger.h"
 static SBASE *sbase = NULL;
-static SERVICE *service = NULL;
+static SERVICE *nowd = NULL;
 static dictionary *dict = NULL;
 void *logger = NULL;
-#define LL(xxx) ((long long int)xxx)
-#define http_default_charset "utf-8"
 int nowd_packet_reader(CONN *conn, CB_DATA *buffer)
 {
     fprintf(stdout, "%s", buffer->data);
@@ -25,7 +23,17 @@ int nowd_packet_reader(CONN *conn, CB_DATA *buffer)
 
 int nowd_exchange_handler(CONN *conn, CB_DATA *exchange)
 {
-    fprintf(stdout, "%s\n", exchange->data);
+    char path[1024];
+    int fd = 0, n = 0;
+    if(conn)
+    {
+        n = sprintf(path, "/tmp/%s-%d-%d.exchange", conn->remote_ip, conn->remote_port, conn->fd);
+        if((fd = open(path, O_CREAT|O_WRONLY|O_APPEND, 0644)) > 0)
+        {
+            n = write(fd, exchange->data, exchange->ndata);
+            close(fd);
+        }
+    }
     return 0;
 }
 
@@ -37,33 +45,20 @@ int nowd_welcome_handler(CONN *conn)
     {
         memset(&session, 0, sizeof(SESSION));
         session.packet_type = PACKET_PROXY;
-        if(service->is_use_SSL) session.flags |= SB_USE_SSL;
+        //if(service->is_use_SSL) 
+        session.flags |= SB_USE_SSL;
         session.exchange_handler = &nowd_exchange_handler;
-        //if((service->newproxy(service, conn, -1, -1, "23.22.248.181", 8253, &session)))
-        if((service->newproxy(service, conn, -1, -1, "202.77.180.185", 443, &session)))
+        fprintf(stdout, "%s:%d\n", conn->remote_ip, conn->remote_port);
+        //char *ip = "202.77.180.185";int port = 443;
+        char *ip = "184.72.149.30";int port = 8253;
+        if((nowd->newproxy(nowd, conn, -1, -1, ip, port, &session)))
         {
-            fprintf(stdout, "proxy{%s:%d to 202.77.180.185:443}\n", conn->remote_ip, conn->remote_port);
+            fprintf(stdout, "proxy{%s:%d to %s:%d}\n", conn->remote_ip, conn->remote_port, ip, port);
             return 0;
         }
-
     }
     return 0;
 }
-
-int nowd_packet_handler(CONN *conn, CB_DATA *packet)
-{
-	if(conn)
-    {
-		return conn->push_chunk((CONN *)conn, ((CB_DATA *)packet)->data, packet->ndata);
-    }
-    return -1;
-}
-
-int nowd_data_handler(CONN *conn, CB_DATA *packet, CB_DATA *cache, CB_DATA *chunk)
-{
-    return -1;
-}
-
 static void nowd_stop(int sig){
     switch (sig) {
         case SIGINT:
@@ -74,12 +69,14 @@ static void nowd_stop(int sig){
         default:
             break;
     }
+    return ;
 }
 
 /* Initialize from ini file */
 int sbase_initialize(SBASE *sbase, char *conf)
 {
-	char *s = NULL, *p = NULL, *cacert_file = NULL, *privkey_file = NULL;
+	char *p = NULL, *cacert_file = NULL, *privkey_file = NULL;
+
 	if((dict = iniparser_new(conf)) == NULL)
 	{
 		fprintf(stderr, "Initializing conf:%s failed, %s\n", conf, strerror(errno));
@@ -90,69 +87,43 @@ int sbase_initialize(SBASE *sbase, char *conf)
 	sbase->connections_limit = iniparser_getint(dict, "SBASE:connections_limit", SB_CONN_MAX);
 	sbase->usec_sleep = iniparser_getint(dict, "SBASE:usec_sleep", SB_USEC_SLEEP);
 	sbase->set_log(sbase, iniparser_getstr(dict, "SBASE:logfile"));
-    sbase->set_log_level(sbase, iniparser_getint(dict, "SBASE:log_level", 0));
+    sbase->set_log_level(sbase, iniparser_getint(dict, "SBASE:log_level", 2));
 	sbase->set_evlog(sbase, iniparser_getstr(dict, "SBASE:evlogfile"));
 	/* NOWD */
-	if((service = service_init()) == NULL)
+	if((nowd = service_init()) == NULL)
 	{
 		fprintf(stderr, "Initialize service failed, %s", strerror(errno));
 		_exit(-1);
 	}
-	service->family = iniparser_getint(dict, "NOWD:inet_family", AF_INET);
-	service->sock_type = iniparser_getint(dict, "NOWD:socket_type", SOCK_STREAM);
-	service->ip = iniparser_getstr(dict, "NOWD:service_ip");
-	service->port = iniparser_getint(dict, "NOWD:service_port", 80);
-	service->working_mode = iniparser_getint(dict, "NOWD:working_mode", WORKING_PROC);
-	service->service_type = iniparser_getint(dict, "NOWD:service_type", C_SERVICE);
-	service->service_name = iniparser_getstr(dict, "NOWD:service_name");
-	service->nprocthreads = iniparser_getint(dict, "NOWD:nprocthreads", 1);
-	service->niodaemons = iniparser_getint(dict, "NOWD:niodaemons", 1);
-	service->ndaemons = iniparser_getint(dict, "NOWD:ndaemons", 0);
-    //service->session.packet_type= PACKET_CUSTOMIZED;
-    service->session.packet_type=iniparser_getint(dict, "NOWD:packet_type",PACKET_DELIMITER);
-    if((service->session.packet_delimiter = iniparser_getstr(dict, "NOWD:packet_delimiter")))
-    {
-        p = s = service->session.packet_delimiter;
-        while(*p != 0 )
-        {
-            if(*p == '\\' && *(p+1) == 'n')
-            {
-                *s++ = '\n';
-                p += 2;
-            }
-            else if (*p == '\\' && *(p+1) == 'r')
-            {
-                *s++ = '\r';
-                p += 2;
-            }
-            else
-                *s++ = *p++;
-        }
-        *s++ = 0;
-        service->session.packet_delimiter_length = strlen(service->session.packet_delimiter);
-    }
-	service->session.buffer_size = iniparser_getint(dict, "NOWD:buffer_size", SB_BUF_SIZE);
-	service->session.welcome_handler = &nowd_welcome_handler;
-	//service->session.packet_reader = &nowd_packet_reader;
-	//service->session.packet_handler = &nowd_packet_handler;
-	//service->session.data_handler = &nowd_data_handler;
-    //service->session.exchange_handler = &nowd_exchange_handler;
+	nowd->family = iniparser_getint(dict, "NOWD:inet_family", AF_INET);
+	nowd->sock_type = iniparser_getint(dict, "NOWD:socket_type", SOCK_STREAM);
+	nowd->ip = iniparser_getstr(dict, "NOWD:service_ip");
+	nowd->port = iniparser_getint(dict, "NOWD:service_port", 80);
+	nowd->working_mode = iniparser_getint(dict, "NOWD:working_mode", WORKING_PROC);
+	nowd->service_type = iniparser_getint(dict, "NOWD:service_type", S_SERVICE);
+	nowd->service_name = iniparser_getstr(dict, "NOWD:service_name");
+	nowd->nprocthreads = iniparser_getint(dict, "NOWD:nprocthreads", 8);
+	nowd->niodaemons = iniparser_getint(dict, "NOWD:niodaemons", 1);
+	nowd->ndaemons = iniparser_getint(dict, "NOWD:ndaemons", 0);
+    nowd->session.packet_type=iniparser_getint(dict, "NOWD:packet_type", PACKET_PROXY);
+	nowd->session.buffer_size = iniparser_getint(dict, "NOWD:buffer_size", SB_BUF_SIZE);
+	nowd->session.welcome_handler = &nowd_welcome_handler;
     cacert_file = iniparser_getstr(dict, "NOWD:cacert_file");
     privkey_file = iniparser_getstr(dict, "NOWD:privkey_file");
     if(cacert_file && privkey_file && iniparser_getint(dict, "NOWD:is_use_SSL", 0))
     {
-        service->is_use_SSL = 1;
-        service->cacert_file = cacert_file;
-        service->privkey_file = privkey_file;
+        nowd->is_use_SSL = 1;
+        nowd->cacert_file = cacert_file;
+        nowd->privkey_file = privkey_file;
     }
     if((p = iniparser_getstr(dict, "NOWD:logfile")))
     {
-        service->set_log(service, p);
-        service->set_log_level(service, iniparser_getint(dict, "NOWD:log_level", 0));
+        nowd->set_log(nowd, p);
+        nowd->set_log_level(nowd, iniparser_getint(dict, "NOWD:log_level", 0));
     }
 	/* server */
 	fprintf(stdout, "Parsing for server...\n");
-	return sbase->add_service(sbase, service);
+	return sbase->add_service(sbase, nowd);
 }
 
 int main(int argc, char **argv)
@@ -212,24 +183,6 @@ int main(int argc, char **argv)
         return -1;
     }
     fprintf(stdout, "Initialized successed\n");
-    if(service->sock_type == SOCK_DGRAM 
-            && (p = iniparser_getstr(dict, "NOWD:multicast")))
-    {
-        if(service->add_multicast(service, p) != 0)
-        {
-            fprintf(stderr, "add multicast:%s failed, %s", p, strerror(errno));
-            exit(EXIT_FAILURE);
-            return -1;
-        }
-        p = "224.1.1.168";
-        if(service->add_multicast(service, p) != 0)
-        {
-            fprintf(stderr, "add multicast:%s failed, %s", p, strerror(errno));
-            exit(EXIT_FAILURE);
-            return -1;
-        }
-
-    }
     sbase->running(sbase, 0);
     //sbase->running(sbase, 60000000); sbase->stop(sbase);
     //sbase->running(sbase, 90000000);sbase->stop(sbase);
