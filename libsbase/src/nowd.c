@@ -50,7 +50,7 @@ int nowd_welcome_handler(CONN *conn)
         session.exchange_handler = &nowd_exchange_handler;
         fprintf(stdout, "%s:%d\n", conn->remote_ip, conn->remote_port);
         //char *ip = "202.77.180.185";int port = 443;
-        char *ip = "184.72.149.30";int port = 8253;
+        char *ip = "204.236.252.78";int port = 8253;
         if((nowd->newproxy(nowd, conn, -1, -1, ip, port, &session)))
         {
             fprintf(stdout, "proxy{%s:%d to %s:%d}\n", conn->remote_ip, conn->remote_port, ip, port);
