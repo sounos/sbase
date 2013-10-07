@@ -360,9 +360,6 @@ void ev_handler(int fd, int ev_flags, void *arg)
 err:
         {
             event_destroy(&(conns[fd].event));
-            memset(&(conns[fd]), 0, sizeof(CONN));
-            shutdown(fd, SHUT_RDWR);
-            close(fd);
 #ifdef USE_SSL
             if(conns[fd].ssl)
             {   SSL_shutdown(conns[fd].ssl);
@@ -370,7 +367,9 @@ err:
                 conns[fd].ssl = NULL;
             }
 #endif
-
+            memset(&(conns[fd]), 0, sizeof(CONN));
+            shutdown(fd, SHUT_RDWR);
+            close(fd);
             SHOW_LOG("Connection %d closed", fd);
         }
         return ;
