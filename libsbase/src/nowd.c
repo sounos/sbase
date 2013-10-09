@@ -31,6 +31,7 @@ int nowd_exchange_handler(CONN *conn, CB_DATA *exchange)
         if((fd = open(path, O_CREAT|O_WRONLY|O_APPEND, 0644)) > 0)
         {
             n = write(fd, exchange->data, exchange->ndata);
+            fprintf(stdout, "exchange %d bytes from %s:%d\n", exchange->ndata, conn->remote_ip, conn->remote_port);
             close(fd);
         }
     }
@@ -43,19 +44,24 @@ int nowd_welcome_handler(CONN *conn)
     SESSION session = {0};
     if(conn)
     {
+
         memset(&session, 0, sizeof(SESSION));
         session.packet_type = PACKET_PROXY;
         //if(service->is_use_SSL) 
         session.flags |= SB_USE_SSL;
         session.exchange_handler = &nowd_exchange_handler;
-        fprintf(stdout, "%s:%d\n", conn->remote_ip, conn->remote_port);
+        //fprintf(stdout, "%s:%d\n", conn->remote_ip, conn->remote_port);
         //char *ip = "202.77.180.185";int port = 443;
-        char *ip = "204.236.252.78";int port = 8253;
+        char *ip = "107.22.221.252";int port = 8253;
         if((nowd->newproxy(nowd, conn, -1, -1, ip, port, &session)))
         {
             fprintf(stdout, "proxy{%s:%d to %s:%d}\n", conn->remote_ip, conn->remote_port, ip, port);
             return 0;
         }
+	/*
+	char *s = "{\"time\":\"2013-10-01T07:01:27.556Z\",\"oauth_key\":\"3LN4UQc1WaKM9tDFMJvreYWJzVvA3rGmMe4XhmAq\",\"data\":{\"alert\":\"gogogogooooo\",\"push_hash\":\"ab6a85df66766e18c015ffce33f1e4ba\"}}";
+	conn->push_chunk(conn, s, strlen(s));
+	*/
     }
     return 0;
 }
@@ -87,7 +93,7 @@ int sbase_initialize(SBASE *sbase, char *conf)
 	sbase->connections_limit = iniparser_getint(dict, "SBASE:connections_limit", SB_CONN_MAX);
 	sbase->usec_sleep = iniparser_getint(dict, "SBASE:usec_sleep", SB_USEC_SLEEP);
 	sbase->set_log(sbase, iniparser_getstr(dict, "SBASE:logfile"));
-    sbase->set_log_level(sbase, iniparser_getint(dict, "SBASE:log_level", 2));
+	sbase->set_log_level(sbase, iniparser_getint(dict, "SBASE:log_level", 2));
 	sbase->set_evlog(sbase, iniparser_getstr(dict, "SBASE:evlogfile"));
 	/* NOWD */
 	if((nowd = service_init()) == NULL)
@@ -105,22 +111,23 @@ int sbase_initialize(SBASE *sbase, char *conf)
 	nowd->nprocthreads = iniparser_getint(dict, "NOWD:nprocthreads", 8);
 	nowd->niodaemons = iniparser_getint(dict, "NOWD:niodaemons", 1);
 	nowd->ndaemons = iniparser_getint(dict, "NOWD:ndaemons", 0);
-    nowd->session.packet_type=iniparser_getint(dict, "NOWD:packet_type", PACKET_PROXY);
+	nowd->session.packet_type=iniparser_getint(dict, "NOWD:packet_type", PACKET_PROXY);
 	nowd->session.buffer_size = iniparser_getint(dict, "NOWD:buffer_size", SB_BUF_SIZE);
 	nowd->session.welcome_handler = &nowd_welcome_handler;
-    cacert_file = iniparser_getstr(dict, "NOWD:cacert_file");
-    privkey_file = iniparser_getstr(dict, "NOWD:privkey_file");
-    if(cacert_file && privkey_file && iniparser_getint(dict, "NOWD:is_use_SSL", 0))
-    {
-        nowd->is_use_SSL = 1;
-        nowd->cacert_file = cacert_file;
-        nowd->privkey_file = privkey_file;
-    }
-    if((p = iniparser_getstr(dict, "NOWD:logfile")))
-    {
-        nowd->set_log(nowd, p);
-        nowd->set_log_level(nowd, iniparser_getint(dict, "NOWD:log_level", 0));
-    }
+	nowd->session.exchange_handler = &nowd_exchange_handler;
+	cacert_file = iniparser_getstr(dict, "NOWD:cacert_file");
+	privkey_file = iniparser_getstr(dict, "NOWD:privkey_file");
+	if(cacert_file && privkey_file && iniparser_getint(dict, "NOWD:is_use_SSL", 0))
+	{
+		nowd->is_use_SSL = 1;
+		nowd->cacert_file = cacert_file;
+		nowd->privkey_file = privkey_file;
+	}
+	if((p = iniparser_getstr(dict, "NOWD:logfile")))
+	{
+		nowd->set_log(nowd, p);
+		nowd->set_log_level(nowd, iniparser_getint(dict, "NOWD:log_level", 0));
+	}
 	/* server */
 	fprintf(stdout, "Parsing for server...\n");
 	return sbase->add_service(sbase, nowd);

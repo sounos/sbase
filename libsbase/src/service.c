@@ -862,13 +862,12 @@ new_conn:
             getsockname(fd, (struct sockaddr *)&lsa, &lsa_len);
             local_ip    = inet_ntoa(lsa.sin_addr);
             local_port  = ntohs(lsa.sin_port);
-            if(parent->session.timeout == 0)
-                parent->session.timeout = SB_PROXY_TIMEOUT;
+            //if(parent->session.timeout == 0) parent->session.timeout = SB_PROXY_TIMEOUT;
             parent->session.packet_type |= PACKET_PROXY;
             sess->packet_type |= PACKET_PROXY;
             sess->parent = parent;
             sess->parentid = parent->index;
-            sess->timeout = SB_PROXY_TIMEOUT;;
+            //sess->timeout = SB_PROXY_TIMEOUT;;
             if((conn = service_addconn(service, sock_type, fd, remote_ip, remote_port, 
                             local_ip, local_port, sess, ssl, CONN_STATUS_FREE)))
             {
