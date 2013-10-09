@@ -107,6 +107,12 @@ int new_request()
         conns[fd].fd = fd;
         if(is_use_ssl && sock_type == SOCK_STREAM)
         {
+            /* Connect */
+            if(connect(fd, (struct sockaddr *)&xsa, xsa_len) != 0)
+            {
+                FATAL_LOG("Connect to %s:%d failed, %s", ip, port, strerror(errno));
+                _exit(-1);
+            }
 #ifdef USE_SSL
             conns[fd].ssl = SSL_new(ctx);
             if(conns[fd].ssl == NULL )
@@ -115,7 +121,7 @@ int new_request()
                         ERR_reason_error_string(ERR_get_error()));
                 _exit(-1);
             }
-            if((ret = SSL_set_fd(conns[fd].ssl, fd)) == 0)
+            if(SSL_set_fd(conns[fd].ssl, fd) == 0)
             {
                 FATAL_LOG("add SSL to tcp socket failed:%s\n",
                         ERR_reason_error_string(ERR_get_error()));
@@ -133,13 +139,7 @@ int new_request()
         /* set FD NON-BLOCK */
         if(sock_type == SOCK_STREAM)
         {
-            /* Connect */
-            if(connect(fd, (struct sockaddr *)&xsa, xsa_len) != 0)
-            {
-                FATAL_LOG("Connect to %s:%d failed, %s", ip, port, strerror(errno));
-                _exit(-1);
-            }
-            flag = fcntl(fd, F_GETFL, 0)|O_NONBLOCK;
+           flag = fcntl(fd, F_GETFL, 0)|O_NONBLOCK;
             fcntl(fd, F_SETFL, flag);
             event_set(&conns[fd].event, fd, E_READ|E_WRITE|E_PERSIST, 
                     (void *)&(conns[fd].event), &ev_handler);
@@ -333,11 +333,6 @@ void ev_handler(int fd, int ev_flags, void *arg)
 err:
     {
         event_destroy(&(conns[fd].event));
-        memset(&(conns[fd].event), 0, sizeof(EVENT));
-        conns[fd].nresp = 0;
-        shutdown(fd, SHUT_RDWR);
-        conns[fd].fd = 0;
-        close(fd);
 #ifdef USE_SSL
         if(conns[fd].ssl)
         {
@@ -346,7 +341,12 @@ err:
             conns[fd].ssl = NULL;
         }
 #endif
-        //SHOW_LOG("Connection %d closed", fd);
+        memset(&(conns[fd].event), 0, sizeof(EVENT));
+        conns[fd].nresp = 0;
+        shutdown(fd, SHUT_RDWR);
+        conns[fd].fd = 0;
+        close(fd);
+       //SHOW_LOG("Connection %d closed", fd);
         ncompleted++; 
         new_request();
     }
