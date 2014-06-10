@@ -8,4 +8,4 @@ sed -i "s/^Source:.*/Source: $pkg/" debian/control
 sed -i "s/^License:.*/License: $pkg/" debian/control
 sed -i "s/^Standards-Version:.*/Standards-Version: $ver/" debian/control
 sed -i "s/root <SounOS@gmail.com>/SounOS <SounOS@gmail.com>/" debian/*
-dpkg-buildpackage -rfakeroot -eSounOS -mSounOS
+dpkg-buildpackage -d -rfakeroot -eSounOS -mSounOS
