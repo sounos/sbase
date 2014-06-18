@@ -107,10 +107,12 @@ int service_set(SERVICE *service)
                 }
                 if(service->session.ssl_servername_handler)
                 {
+#ifdef SSL_CTX_set_tlsext_servername_callback
                     SSL_CTX_set_tlsext_servername_callback(XSSL_CTX(service->s_ctx), 
                             service->session.ssl_servername_handler);
                     SSL_CTX_set_tlsext_servername_arg(XSSL_CTX(service->s_ctx),
                             service->session.ssl_servername_arg);
+#endif
                 }
                 if(service->cacert_file && service->privkey_file)
                 {
