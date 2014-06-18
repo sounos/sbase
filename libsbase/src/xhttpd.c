@@ -63,6 +63,7 @@ static void *default_logger = NULL;
 static int xhttpd_SSL_hostname_callback(void *s, int *ad, void *arg)
 {
 #ifdef HAVE_SSL
+#ifdef SSL_TLSEXT_ERR_OK
     char *servername = SSL_get_servername((SSL *)s, TLSEXT_NAMETYPE_host_name);
     int i = 0;
     if (servername && (i = (mtrie_get(namemap, servername, strlen(servername) - 1))) >= 0
@@ -72,6 +73,9 @@ static int xhttpd_SSL_hostname_callback(void *s, int *ad, void *arg)
         SSL_set_SSL_CTX((SSL *)s, XSSL_CTX(httpd_vhosts[i].s_ctx));
     }
     return SSL_TLSEXT_ERR_OK;
+#else
+    return 0;
+#endif
 #else
     return 0;
 #endif
