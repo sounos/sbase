@@ -298,6 +298,8 @@ typedef struct _SERVICE
     int cond;
     int flag;
     int nworking_tosleep;
+    int nqdaemons;
+    int nqthreads;
     ushort conns_free[SB_CONN_MAX];
 
     struct  sockaddr_in sa;
@@ -323,6 +325,8 @@ typedef struct _SERVICE
     struct _PROCTHREAD *iodaemons[SB_THREADS_MAX];
     struct _PROCTHREAD *procthreads[SB_THREADS_MAX];
     struct _PROCTHREAD *daemons[SB_THREADS_MAX];
+    struct _PROCTHREAD *qdaemons[SB_THREADS_MAX];
+    struct _PROCTHREAD *qthreads[SB_THREADS_MAX];
 
     /* socket and inet addr option  */
     char *ip;
