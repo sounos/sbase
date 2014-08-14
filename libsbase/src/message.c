@@ -186,6 +186,7 @@ void qmessage_handler(void *qmsg, void *logger)
                 {
                     ((CALLBACK *)(msg->handler))(msg->arg);
                 }
+                if(msg->msg_id == MESSAGE_TASK) pth->service->overtask(pth->service, pth);
                 goto next;
             }
             if(conn) fd = conn->fd;

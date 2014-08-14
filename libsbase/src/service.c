@@ -468,6 +468,7 @@ running_threads:
                     goto err;
                 }
             }
+            service->nqdaemons = service->ndaemons;
         }
 err:
         /* destroy attr */

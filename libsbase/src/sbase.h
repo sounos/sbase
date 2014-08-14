@@ -23,7 +23,7 @@ extern "C" {
 #define SB_XIDS_MAX             16
 #define SB_GROUPS_MAX           1024
 #define SB_SERVICE_MAX          256
-#define SB_THREADS_MAX          256
+#define SB_THREADS_MAX          1024
 #define SB_INIT_CONNS           256
 #define SB_INIT_CHUNKS          256
 #define SB_CONNS_LIMIT          256
@@ -625,6 +625,7 @@ typedef struct _CONN
     int (*set_session)(struct _CONN *, SESSION *session);
     int (*over_session)(struct _CONN *);
     int (*newtask)(struct _CONN *, CALLBACK *);
+    int (*overtask)(struct _CONN *);
     int (*add_multicast)(struct _CONN *, char *);
     int (*get_service_id)(struct _CONN *);
     char remote_ip[SB_IP_MAX];
