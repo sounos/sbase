@@ -299,7 +299,7 @@ typedef struct _SERVICE
     int flag;
     int nworking_tosleep;
     int nqdaemons;
-    int nqthreads;
+    int bits;
     ushort conns_free[SB_CONN_MAX];
 
     struct  sockaddr_in sa;
@@ -326,7 +326,6 @@ typedef struct _SERVICE
     struct _PROCTHREAD *procthreads[SB_THREADS_MAX];
     struct _PROCTHREAD *daemons[SB_THREADS_MAX];
     struct _PROCTHREAD *qdaemons[SB_THREADS_MAX];
-    struct _PROCTHREAD *qthreads[SB_THREADS_MAX];
 
     /* socket and inet addr option  */
     char *ip;
@@ -403,6 +402,7 @@ typedef struct _SERVICE
 
     /* transaction and task */
     int (*newtask)(struct _SERVICE *, CALLBACK *, void *arg); 
+    void (*overtask)(struct _SERVICE *, struct _PROCTHREAD *);
     int (*newtransaction)(struct _SERVICE *, struct _CONN *, int tid);
 
     /* service default session option */

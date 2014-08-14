@@ -460,6 +460,7 @@ running_threads:
                         procthread_set_evsig_fd(service->daemons[i], service->cond);
                     NEW_PROCTHREAD(service, attr, "daemons", i, service->daemons[i]->threadid, service->daemons[i], service->logger);
                     ret = 0;
+                    service->qdaemons[i] = service->daemons[i];
                 }
                 else
                 {
@@ -1640,8 +1641,13 @@ int service_newtask(SERVICE *service, CALLBACK *task_handler, void *arg)
             pth = service->daemon;
         else if(service->working_mode == WORKING_THREAD && service->ndaemons > 0)
         {
-            index = service->ntask % service->ndaemons;
-            pth = service->daemons[index];
+            MUTEX_LOCK(service->mutex);
+            if(service->nqdaemons > 0)
+            {
+                index = --(service->nqdaemons);
+                pth = service->qdaemons[index];
+            }
+            MUTEX_UNLOCK(service->mutex);
         }
         if(pth)
         {
@@ -1651,6 +1657,21 @@ int service_newtask(SERVICE *service, CALLBACK *task_handler, void *arg)
         }
     }
     return ret;
+}
+
+void service_overtask(SERVICE *service, PROCTHREAD *pth)
+{
+    int index = 0;
+
+    if(service && pth)
+    {
+        MUTEX_LOCK(service->mutex);
+        index = service->nqdaemons++;
+        service->qdaemons[index] = pth;
+        MUTEX_UNLOCK(service->mutex);
+    }
+
+    return ;
 }
 
 /* add new transaction */
@@ -2006,6 +2027,7 @@ SERVICE *service_init()
         service->castgroup          = service_castgroup;
         service->stategroup         = service_stategroup;
         service->newtask            = service_newtask;
+        service->overtask           = service_overtask;
         service->newtransaction     = service_newtransaction;
         service->set_heartbeat      = service_set_heartbeat;
         service->clean              = service_clean;
