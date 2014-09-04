@@ -386,7 +386,7 @@ void benchmark_heartbeat_handler(void *arg)
             }
             else
             {
-                usleep(10);
+                usleep(100000);
                 ++ncurrent;
             }
         }
