@@ -1097,11 +1097,6 @@ int sbase_initialize(SBASE *sbase, char *conf)
         httpsd->cacert_file = cert;
         httpsd->privkey_file = priv;
     }
-    else
-    {
-        fprintf(stderr, "initialize SSL[cacert:%s key:%s port:%d] failed, %s\n", cert, priv, n, strerror(errno));
-        _exit(-1);
-    }
     /* XHTTPD */
     if((httpd = service_init()) == NULL)
     {
