@@ -1253,8 +1253,7 @@ int sbase_initialize(SBASE *sbase, char *conf)
                 *p++ = '\0';
                 sprintf(path, "%s/%s.access.log", httpd_access_log_dir, httpd_vhosts[nvhosts].name );
 		        LOGGER_INIT(httpd_vhosts[nvhosts].logger, path);
-                while(*p != '{' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
-                while(*p == 0x20 || *p == '\t')++p;
+                while(*p != '{' && *p != ']' && *p != 0x20 && *p != '\t' && *p != '\0') ++p;
                 if(*p == '{')
                 {
                     ++p;
