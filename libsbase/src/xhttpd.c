@@ -696,11 +696,11 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
                 }
             }
             p += sprintf(p, "%s", "\r\n");
-            fprintf(stdout, "host:%s port:%d\n", host, port);
+            fprintf(stdout, "host:%s port:%d path:%s\n", host, port, path);
             conn->push_exchange(conn, buf, (p - buf));
-            fprintf(stdout, "%s", buf);
+            //fprintf(stdout, "%s", buf);
             conn->push_exchange(conn, conn->chunk.data, conn->chunk.ndata);
-            fprintf(stdout, "%s\n", conn->chunk.data);
+            //fprintf(stdout, "%s\n", conn->chunk.data);
             /*
             if((n = http_req->headers[HEAD_ENT_CONTENT_LENGTH]) > 0
                     && (n = atol(http_req->hlines + n)) > 0)
@@ -725,11 +725,12 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
                 }
             }
             p += sprintf(p, "%s", "\r\n");
-            fprintf(stdout, "host:%s port:%d\n", host, port);
+            fprintf(stdout, "host:%s port:%d path:%s\n", host, port, path);
+            //fprintf(stdout, "host:%s port:%d\n", host, port);
             conn->push_exchange(conn, buf, (p - buf));
-            fprintf(stdout, "%s", buf);
+            //fprintf(stdout, "%s", buf);
             conn->push_exchange(conn, conn->chunk.data, conn->chunk.ndata);
-            fprintf(stdout, "%s\n", conn->chunk.data);
+            //fprintf(stdout, "%s\n", conn->chunk.data);
         }
         else goto err_end;
         if(xhttpd_bind_proxy(conn, host, port) == -1) goto err_end;
