@@ -776,7 +776,7 @@ int xhttpd_packet_handler(CONN *conn, CB_DATA *packet)
     if(conn && packet)
     {
         p = packet->data;end = packet->data + packet->ndata;
-        REALLOG(default_logger, "header:%s", p);
+        //REALLOG(default_logger, "header:%s", p);
         //return xhttpd_index_view(conn, &http_req, httpd_home, "/");
         if(http_request_parse(p, end, &http_req, http_headers_map) == -1) goto err;
         //get vhost
