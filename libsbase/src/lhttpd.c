@@ -70,6 +70,7 @@ int lhttpd_packet_handler(CONN *conn, CB_DATA *packet)
     {
         if(packet && (s = packet->data) && packet->ndata > 0)
         {
+            return conn->push_file(conn, "/tmp/x.txt", 0, 2272);
             end = s + packet->ndata;
             while(*s == 0x20 || *s == '\t')s++;
             if(s < end && strncasecmp(s, "get", 3) == 0)
