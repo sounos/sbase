@@ -696,7 +696,7 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
                 }
             }
             p += sprintf(p, "%s", "\r\n");
-            fprintf(stdout, "host:%s port:%d path:%s\n", host, port, path);
+            //fprintf(stdout, "host:%s port:%d path:%s\n", host, port, path);
             conn->push_exchange(conn, buf, (p - buf));
             //fprintf(stdout, "%s", buf);
             conn->push_exchange(conn, conn->chunk.data, conn->chunk.ndata);
@@ -725,7 +725,7 @@ int xhttpd_proxy_handler(CONN *conn, HTTP_REQ *http_req)
                 }
             }
             p += sprintf(p, "%s", "\r\n");
-            fprintf(stdout, "host:%s port:%d path:%s\n", host, port, path);
+            //fprintf(stdout, "host:%s port:%d path:%s\n", host, port, path);
             //fprintf(stdout, "host:%s port:%d\n", host, port);
             conn->push_exchange(conn, buf, (p - buf));
             //fprintf(stdout, "%s", buf);

@@ -51,8 +51,8 @@ int nowd_welcome_handler(CONN *conn)
         session.flags |= SB_USE_SSL;
         session.exchange_handler = &nowd_exchange_handler;
         //fprintf(stdout, "%s:%d\n", conn->remote_ip, conn->remote_port);
-        //char *ip = "202.77.180.185";int port = 443;
-        char *ip = "107.22.221.252";int port = 8253;
+        char *ip = "54.85.13.159";int port = 443;
+        //char *ip = "54.85.13.159";int port = 8253;
         if((nowd->newproxy(nowd, conn, -1, -1, ip, port, &session)))
         {
             fprintf(stdout, "proxy{%s:%d to %s:%d}\n", conn->remote_ip, conn->remote_port, ip, port);
