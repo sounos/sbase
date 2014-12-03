@@ -165,6 +165,7 @@ EXTRA_DIST = libsbase.spec rc.lechod rc.lechod.ini rc.xhttpd rc.xhttpd.ini ssl.s
 conftodir = "`echo $(sysconfdir)|sed -e 's|/usr/etc|/etc|'`"
 initdir = "$(DESTDIR)$(conftodir)/init.d"
 sysconftodir = "$(DESTDIR)$(conftodir)"
+isubuntu = "`uname -v|grep Ubuntu`"
 all: all-am
 
 .SUFFIXES:
@@ -362,8 +363,15 @@ install-ini:
 		|| cp -p $(top_srcdir)/doc/rc.xhttpd.ini $(sysconftodir)/xhttpd.ini
 	@test -f $(initdir)/lechod \
 		|| cp -p $(top_srcdir)/doc/rc.lechod $(initdir)/lechod
-	@test -f $(initdir)/xhttpd \
-		|| cp -p $(top_srcdir)/doc/rc.xhttpd $(initdir)/xhttpd
+	@echo "install init scripts"
+	@if [ $(isubuntu) != "" ]; \
+		then \
+			@test -f $(initdir)/xhttpd \
+				|| cp -p $(top_srcdir)/doc/rc.xhttpd $(initdir)/xhttpd \
+		else \
+			@test -f $(initdir)/xhttpd \
+				|| cp -p $(top_srcdir)/doc/xhttpd.init $(initdir)/xhttpd \
+	fi
 	@test -f $(initdir)/nowd \
 		|| cp -p $(top_srcdir)/doc/rc.nowd $(initdir)/nowd
 	@perl -i -p -e "s@/usr/local/sbin@$(prefix)/sbin@g" \
