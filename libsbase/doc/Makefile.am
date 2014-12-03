@@ -7,6 +7,8 @@ initdir = "$(DESTDIR)$(conftodir)/init.d"
 
 sysconftodir = "$(DESTDIR)$(conftodir)"
 
+isubuntu = "`uname -v|grep Ubuntu`"
+
 install-ini:
 	@echo install xhttpd.ini lechod.ini to $(sysconftodir)
 	@test -d $(sysconftodir)      || mkdir -p $(sysconftodir)
@@ -19,8 +21,15 @@ install-ini:
 		|| cp -p $(top_srcdir)/doc/rc.xhttpd.ini $(sysconftodir)/xhttpd.ini
 	@test -f $(initdir)/lechod \
 		|| cp -p $(top_srcdir)/doc/rc.lechod $(initdir)/lechod
-	@test -f $(initdir)/xhttpd \
-		|| cp -p $(top_srcdir)/doc/rc.xhttpd $(initdir)/xhttpd
+	@echo "install init scripts"
+	@if [ $(isubuntu) != "" ]; \
+		then \
+			@test -f $(initdir)/xhttpd \
+				|| cp -p $(top_srcdir)/doc/rc.xhttpd $(initdir)/xhttpd \
+		else \
+			@test -f $(initdir)/xhttpd \
+				|| cp -p $(top_srcdir)/doc/xhttpd.init $(initdir)/xhttpd \
+	fi
 	@test -f $(initdir)/nowd \
 		|| cp -p $(top_srcdir)/doc/rc.nowd $(initdir)/nowd
 	@perl -i -p -e "s@/usr/local/sbin@$(prefix)/sbin@g" \

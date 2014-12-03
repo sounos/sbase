@@ -1071,7 +1071,7 @@ static void xhttpd_sigpipe(int sig)
 int sbase_initialize(SBASE *sbase, char *conf)
 {
     char *s = NULL, *p = NULL, *cert = NULL, *priv = NULL, path[HTTP_PATH_MAX];
-    int n = 0, i = 0;
+    int n = 0, i = 0, pidfd = 0;
 
     if((dict = iniparser_new(conf)) == NULL)
     {
@@ -1086,6 +1086,13 @@ int sbase_initialize(SBASE *sbase, char *conf)
     sbase->set_log_level(sbase, iniparser_getint(dict, "SBASE:log_level", 0));
     sbase->set_evlog(sbase, iniparser_getstr(dict, "SBASE:evlogfile"));
     sbase->set_evlog_level(sbase, iniparser_getint(dict, "SBASE:evlog_level", 0));
+    if((p = iniparser_getstr(dict, "SBASE:pidfile"))
+            && (pidfd = open(p, O_CREAT|O_TRUNC|O_WRONLY, 0644)) > 0)
+    {
+        n = sprintf(path, "%lu", (unsigned long int)getpid());
+        n = write(pidfd, path, n);
+        close(pidfd);
+    }
     setrlimiter("RLIMIT_NOFILE", RLIMIT_NOFILE, sbase->connections_limit);
     cert = iniparser_getstr(dict, "XHTTPD:cacert_file");
     priv = iniparser_getstr(dict, "XHTTPD:privkey_file");

@@ -505,11 +505,13 @@ int main(int argc, char **argv)
             return -1;
         }
         /* set FD NON-BLOCK */
+        /*
         if(fcntl(lfd, F_SETFL, fcntl(lfd, F_GETFL, 0)|O_NONBLOCK) != 0 )
         {
             SHOW_LOG("Setting NON-BLOCK failed, %s", strerror(errno));
             return -1;
         }
+        */
         /* Listen */
         if(ev_sock_list[ev_sock_type] == SOCK_STREAM)
         {
