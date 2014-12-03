@@ -797,6 +797,11 @@ int xhttpd_packet_handler(CONN *conn, CB_DATA *packet)
                 logger = httpd_vhosts[i].logger;
                 home = httpd_vhosts[i].home;
             }
+            else
+            {
+                logger = httpd_vhosts[0].logger;
+                home = httpd_vhosts[0].home;
+            }
         }
         if((n = http_req.headers[HEAD_REQ_USER_AGENT]) > 0)
         {
