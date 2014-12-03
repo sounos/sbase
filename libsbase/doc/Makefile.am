@@ -25,10 +25,10 @@ install-ini:
 	@if [ $(isubuntu) != "" ]; \
 		then \
 			@test -f $(initdir)/xhttpd \
-				|| cp -p $(top_srcdir)/doc/rc.xhttpd $(initdir)/xhttpd \
+				|| cp -p $(top_srcdir)/doc/rc.xhttpd $(initdir)/xhttpd; \
 		else \
 			@test -f $(initdir)/xhttpd \
-				|| cp -p $(top_srcdir)/doc/xhttpd.init $(initdir)/xhttpd \
+				|| cp -p $(top_srcdir)/doc/xhttpd.init $(initdir)/xhttpd; \
 	fi
 	@test -f $(initdir)/nowd \
 		|| cp -p $(top_srcdir)/doc/rc.nowd $(initdir)/nowd
