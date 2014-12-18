@@ -141,6 +141,15 @@ int new_request()
         {
            flag = fcntl(fd, F_GETFL, 0)|O_NONBLOCK;
             fcntl(fd, F_SETFL, flag);
+            if(!is_use_ssl)
+            {
+                /* Connect */
+                if(connect(fd, (struct sockaddr *)&xsa, xsa_len) != 0 && errno != EINPROGRESS)
+                {
+                    FATAL_LOG("Connect to %s:%d failed, %s", ip, port, strerror(errno));
+                    _exit(-1);
+                }
+            }
             event_set(&conns[fd].event, fd, E_READ|E_WRITE|E_PERSIST, 
                     (void *)&(conns[fd].event), &ev_handler);
         }
