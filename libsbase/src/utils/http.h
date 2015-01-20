@@ -404,7 +404,7 @@ static const HTTP_ELEMENT http_methods[] =
 };
 
 /* file ext support list */
-#define HTTP_MIME_NUM 99
+#define HTTP_MIME_NUM 100
 static const HTTP_ELEMENT http_mime_types[]=
 {
     {0, 4, "html", "text/html"},
@@ -505,7 +505,8 @@ static const HTTP_ELEMENT http_mime_types[]=
     {95, 2, "sh", "text/plain"},
     {96, 5, "guess", "text/plain"},
     {97, 3, "sub", "text/plain"},
-    {98, 3, "awk", "text/plain"}
+    {98, 3, "awk", "text/plain"},
+    {99, 3, "md", "text/plain"}
 };
 /*
 static const char *ftypes[] = {
